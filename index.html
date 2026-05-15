@@ -191,7 +191,7 @@
                                                 </div>
                                                 <div>
                                                     <div class="font-bold text-slate-900 text-sm leading-none mb-1">{{ item['Nombres y Apellidos'] || 'Sin nombre' }}</div>
-                                                    <div class="text-[10px] text-slate-400 font-bold uppercase truncate max-w-[120px]">{{ item['Zona de residencia'] || 'Zona sin especificar' }}</div>
+                                                    <div class="text-[10px] text-slate-400 font-bold uppercase truncate max-w-[120px]">{{ item[zonaKey] || 'Zona sin especificar' }}</div>
                                                 </div>
                                             </div>
                                         </td>
@@ -389,12 +389,25 @@
                     }
                 });
 
+                // Normalizador para ignorar acentos, mayúsculas y separar eficientemente
+                const normalizeStr = (str) => {
+                    if (str === null || str === undefined) return '';
+                    return String(str).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+                };
+
                 // Función inteligente para detectar la columna de "Turnos" (Ignora saltos de línea y textos largos)
                 const turnoKey = computed(() => {
                     if (data.value.length === 0) return '';
                     const keys = Object.keys(data.value[0]);
                     return keys.find(k => k.toLowerCase().includes('disponibilidad para trabajar')) || 
                            keys.find(k => k.toLowerCase().includes('turnos')) || '';
+                });
+
+                // Función inteligente para detectar la columna "Zona de residencia"
+                const zonaKey = computed(() => {
+                    if (data.value.length === 0) return 'Zona de residencia';
+                    const keys = Object.keys(data.value[0]);
+                    return keys.find(k => k.toLowerCase().includes('zona') || k.toLowerCase().includes('residencia')) || 'Zona de residencia';
                 });
 
                 const turnosDisponibles = computed(() => {
@@ -410,24 +423,34 @@
                 });
 
                 const filteredData = computed(() => {
+                    const kTurno = turnoKey.value;
+                    const kZona = zonaKey.value;
+                    
+                    // Limpiamos la búsqueda: quitamos acentos y separamos por espacios, comas o guiones
+                    const searchTerms = normalizeStr(filters.value.search).split(/\s+/).filter(t => t);
+                    const zonaTerms = normalizeStr(filters.value.zona).split(/[\s,.-]+/).filter(t => t);
+
                     return data.value.filter(item => {
-                        const s = filters.value.search.toLowerCase();
-                        const matchSearch = (item['Nombres y Apellidos'] || '').toLowerCase().includes(s) || (item['C.I'] || '').includes(s);
+                        // MATCH BÚSQUEDA GLOBAL
+                        const itemNombre = normalizeStr(item['Nombres y Apellidos']);
+                        const itemCI = normalizeStr(item['C.I']);
+                        const matchSearch = searchTerms.length === 0 || searchTerms.every(term => 
+                            itemNombre.includes(term) || itemCI.includes(term)
+                        );
                         
-                        // Evaluar búsqueda multipalabra para la Zona de residencia
-                        const zonaTerms = filters.value.zona.toLowerCase().split(' ').filter(term => term.trim() !== '');
-                        const itemZona = (item['Zona de residencia'] || '').toLowerCase();
+                        // MATCH ZONA (Multipalabra e ignorando acentos)
+                        const itemZona = normalizeStr(item[kZona]);
                         const matchZona = zonaTerms.length === 0 || zonaTerms.every(term => itemZona.includes(term));
                         
-                        // Nuevo filtro de Edad por Rango
+                        // MATCH EDAD
                         const edad = item.EdadCalculada;
                         const matchEdad = edad >= filters.value.edadMin && edad <= filters.value.edadMax;
                         
-                        // Filtro de turnos usando la key inteligente
+                        // MATCH TURNO
                         let matchTurno = true;
-                        const key = turnoKey.value;
-                        if (filters.value.turnos.length > 0 && key) {
-                            matchTurno = filters.value.turnos.some(t => (item[key] || '').includes(t));
+                        if (filters.value.turnos.length > 0 && kTurno) {
+                            const itemTurno = item[kTurno] || '';
+                            matchTurno = filters.value.turnos.some(t => itemTurno.includes(t));
                         }
                         
                         return matchSearch && matchZona && matchEdad && matchTurno;
@@ -479,15 +502,16 @@
                 // Función para exportar a Excel usando SheetJS
                 const downloadExcel = () => {
                     const sel = getSelectedData();
-                    const key = turnoKey.value;
+                    const kTurno = turnoKey.value;
+                    const kZona = zonaKey.value;
                     
                     // Preparamos los datos en un formato limpio para el Excel
                     const dataToExport = sel.map(i => ({
                         'Nombre': i['Nombres y Apellidos'] || '',
                         'Cedula': i['C.I'] || '',
                         'Telefono': i['Tel. con 598'] || '',
-                        'Zona': i['Zona de residencia'] || '',
-                        'Turnos': key ? (i[key] || '') : ''
+                        'Zona': kZona ? (i[kZona] || '') : '',
+                        'Turnos': kTurno ? (i[kTurno] || '') : ''
                     }));
 
                     // Creamos la hoja de cálculo (Worksheet)
@@ -501,7 +525,7 @@
                     XLSX.writeFile(wb, "Reporte_Seleccion_ABD.xlsx");
                 };
 
-                return { data, loading, usingMock, errorMessage, filters, turnosDisponibles, filteredData, selectedIds, expandedId, horarioCitacion, isAllSelected, hasActiveFilters, toggleSelection, toggleSelectAll, clearSelection, toggleExpand, getSelectedData, getInitials, resetFilters, shouldShowField, formatValue, formatWhatsAppLink, downloadExcel };
+                return { data, loading, usingMock, errorMessage, filters, turnosDisponibles, filteredData, selectedIds, expandedId, horarioCitacion, isAllSelected, hasActiveFilters, toggleSelection, toggleSelectAll, clearSelection, toggleExpand, getSelectedData, getInitials, resetFilters, shouldShowField, formatValue, formatWhatsAppLink, downloadExcel, zonaKey, turnoKey };
             }
         }).mount('#app');
     </script>
