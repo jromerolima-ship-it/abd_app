@@ -108,6 +108,19 @@
                             </div>
                         </div>
 
+                        <!-- FILTRO ESTADO -->
+                        <div>
+                            <label class="block text-[11px] font-black text-slate-500 uppercase mb-3">Estado del Funcionario</label>
+                            <div class="relative">
+                                <select v-model="filters.estado" class="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm appearance-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all cursor-pointer font-bold text-slate-600">
+                                    <option value="">Todos los Estados</option>
+                                    <option value="activo">Activos (o Vacíos)</option>
+                                    <option value="inactivo">Inactivos (o Vacíos)</option>
+                                </select>
+                                <i data-lucide="chevron-down" class="absolute right-4 top-3.5 h-4 w-4 text-slate-400 pointer-events-none"></i>
+                            </div>
+                        </div>
+
                         <!-- FILTRO EDAD POR RANGO -->
                         <div>
                             <div class="flex justify-between items-center mb-3">
@@ -291,8 +304,8 @@
                 const loading = ref(true);
                 const usingMock = ref(false);
                 const errorMessage = ref('');
-                // Actualizado a rango de Edad Mínimo y Máximo
-                const filters = ref({ search: '', zona: '', edadMin: 18, edadMax: 65, turnos: [] });
+                // Actualizado con el estado
+                const filters = ref({ search: '', zona: '', edadMin: 18, edadMax: 65, turnos: [], estado: '' });
                 const selectedIds = ref(new Set());
                 const expandedId = ref(null);
                 const horarioCitacion = ref('08:30 hs');
@@ -301,9 +314,9 @@
                 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzOECyvo2CJKMIMpP5SMw4ocy63loGfsvriYshuNInEL9YgRKHzYe86MmcgSWY_8hZwXA/exec";
 
                 const MOCK_DATA = [
-                    ["Marca temporal", "Nombres y Apellidos", "C.I", "Fecha de nacimiento", "Zona de residencia", "Tel. con 598", "¿En qué turnos tenés disponibilidad para trabajar? Podes marcar más de una opción"],
-                    ["2026-05-15T13:00:00.000Z", "Juan Pérez (Ejemplo)", "1.234.567-8", "1995-05-15T00:00:00.000Z", "Montevideo - Centro", "099123456", "Mañana, Tarde"],
-                    ["2026-05-15T13:05:00.000Z", "María Silva (Ejemplo)", "2.345.678-9", "1988-08-20T00:00:00.000Z", "Montevideo - Cerrito", "098765432", "Noche"]
+                    ["Marca temporal", "Nombres y Apellidos", "C.I", "Fecha de nacimiento", "Zona de residencia", "Tel. con 598", "¿En qué turnos tenés disponibilidad para trabajar? Podes marcar más de una opción", "Estado"],
+                    ["2026-05-15T13:00:00.000Z", "Juan Pérez (Ejemplo)", "1.234.567-8", "1995-05-15T00:00:00.000Z", "Montevideo - Centro", "099123456", "Mañana, Tarde", "Activo"],
+                    ["2026-05-15T13:05:00.000Z", "María Silva (Ejemplo)", "2.345.678-9", "1988-08-20T00:00:00.000Z", "Montevideo - Cerrito", "098765432", "Noche", ""]
                 ];
 
                 const processData = (rawArray) => {
@@ -395,7 +408,7 @@
                     return String(str).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
                 };
 
-                // Función inteligente para detectar la columna de "Turnos" (Ignora saltos de línea y textos largos)
+                // Función inteligente para detectar la columna de "Turnos"
                 const turnoKey = computed(() => {
                     if (data.value.length === 0) return '';
                     const keys = Object.keys(data.value[0]);
@@ -408,6 +421,13 @@
                     if (data.value.length === 0) return 'Zona de residencia';
                     const keys = Object.keys(data.value[0]);
                     return keys.find(k => k.toLowerCase().includes('zona') || k.toLowerCase().includes('residencia')) || 'Zona de residencia';
+                });
+
+                // Función inteligente para detectar la columna "Estado" (activo/inactivo)
+                const estadoKey = computed(() => {
+                    if (data.value.length === 0) return 'Estado';
+                    const keys = Object.keys(data.value[0]);
+                    return keys.find(k => k.toLowerCase().includes('estado') || k.toLowerCase().includes('activo')) || 'Estado';
                 });
 
                 const turnosDisponibles = computed(() => {
@@ -425,10 +445,12 @@
                 const filteredData = computed(() => {
                     const kTurno = turnoKey.value;
                     const kZona = zonaKey.value;
+                    const kEstado = estadoKey.value;
                     
                     // Limpiamos la búsqueda: quitamos acentos y separamos por espacios, comas o guiones
                     const searchTerms = normalizeStr(filters.value.search).split(/\s+/).filter(t => t);
                     const zonaTerms = normalizeStr(filters.value.zona).split(/[\s,.-]+/).filter(t => t);
+                    const filterEstado = filters.value.estado.toLowerCase();
 
                     return data.value.filter(item => {
                         // MATCH BÚSQUEDA GLOBAL
@@ -438,7 +460,7 @@
                             itemNombre.includes(term) || itemCI.includes(term)
                         );
                         
-                        // MATCH ZONA (Multipalabra incluyente OR: trae si coincide al menos una palabra)
+                        // MATCH ZONA (Multipalabra incluyente OR)
                         const itemZona = normalizeStr(item[kZona]);
                         const matchZona = zonaTerms.length === 0 || zonaTerms.some(term => itemZona.includes(term));
                         
@@ -452,13 +474,21 @@
                             const itemTurno = item[kTurno] || '';
                             matchTurno = filters.value.turnos.some(t => itemTurno.includes(t));
                         }
+
+                        // MATCH ESTADO (Siempre pasa si la celda está vacía en la base)
+                        let matchEstado = true;
+                        const itemEstado = normalizeStr(item[kEstado]);
+                        if (filterEstado !== '') {
+                            // Si el usuario filtró por algo, verificamos si está vacío o si coincide
+                            matchEstado = itemEstado === '' || itemEstado.includes(filterEstado);
+                        }
                         
-                        return matchSearch && matchZona && matchEdad && matchTurno;
+                        return matchSearch && matchZona && matchEdad && matchTurno && matchEstado;
                     });
                 });
 
                 const isAllSelected = computed(() => filteredData.value.length > 0 && selectedIds.value.size === filteredData.value.length);
-                const hasActiveFilters = computed(() => filters.value.search !== '' || filters.value.zona !== '' || filters.value.edadMin > 18 || filters.value.edadMax < 65 || filters.value.turnos.length > 0);
+                const hasActiveFilters = computed(() => filters.value.search !== '' || filters.value.zona !== '' || filters.value.edadMin > 18 || filters.value.edadMax < 65 || filters.value.turnos.length > 0 || filters.value.estado !== '');
                 
                 const toggleSelection = (id) => { const s = new Set(selectedIds.value); if (s.has(id)) s.delete(id); else s.add(id); selectedIds.value = s; };
                 const toggleSelectAll = () => { if (isAllSelected.value) selectedIds.value = new Set(); else selectedIds.value = new Set(filteredData.value.map(d => d.id)); };
@@ -466,7 +496,7 @@
                 const toggleExpand = (id) => { expandedId.value = expandedId.value === id ? null : id; nextTick(() => lucide.createIcons()); };
                 const getSelectedData = () => filteredData.value.filter(d => selectedIds.value.has(d.id));
                 const getInitials = (n) => n ? n.trim().split(' ').map(p => p[0]).join('').substring(0,2).toUpperCase() : '??';
-                const resetFilters = () => filters.value = { search: '', zona: '', edadMin: 18, edadMax: 65, turnos: [] };
+                const resetFilters = () => filters.value = { search: '', zona: '', edadMin: 18, edadMax: 65, turnos: [], estado: '' };
                 
                 // Ocultar marca temporal y datos de sistema
                 const shouldShowField = (k, v) => {
@@ -495,7 +525,7 @@
                 const formatWhatsAppLink = (item) => {
                     let tel = (item['Tel. con 598'] || '').replace(/\D/g, '');
                     if (tel && !tel.startsWith('598')) tel = '598' + tel;
-                    const msg = `Hola ${item['Nombres y Apellidos'] || ''}, te citamos por tu postulación a ABD Operarios. Debes presentarte en el horario de las ${horarioCitacion.value}. Por favor completa el siguiente formulario: https://forms.gle/TC6ZKBzLwmWEi9LD8`;
+                    const msg = `Convocatoria para trabajar. Tu horario asignado es: ${horarioCitacion.value} Completá el siguiente formulario solo si tenés la seguridad de que vas a presentarte. https://forms.gle/TC6ZKBzLwmWEi9LD8`;
                     return `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
                 };
                 
@@ -525,7 +555,7 @@
                     XLSX.writeFile(wb, "Reporte_Seleccion_ABD.xlsx");
                 };
 
-                return { data, loading, usingMock, errorMessage, filters, turnosDisponibles, filteredData, selectedIds, expandedId, horarioCitacion, isAllSelected, hasActiveFilters, toggleSelection, toggleSelectAll, clearSelection, toggleExpand, getSelectedData, getInitials, resetFilters, shouldShowField, formatValue, formatWhatsAppLink, downloadExcel, zonaKey, turnoKey };
+                return { data, loading, usingMock, errorMessage, filters, turnosDisponibles, filteredData, selectedIds, expandedId, horarioCitacion, isAllSelected, hasActiveFilters, toggleSelection, toggleSelectAll, clearSelection, toggleExpand, getSelectedData, getInitials, resetFilters, shouldShowField, formatValue, formatWhatsAppLink, downloadExcel, zonaKey, turnoKey, estadoKey };
             }
         }).mount('#app');
     </script>
