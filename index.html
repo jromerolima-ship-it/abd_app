@@ -30,7 +30,7 @@
         <div v-if="loading" class="fixed inset-0 z-50 flex items-center justify-center bg-white/90 backdrop-blur-md">
             <div class="flex flex-col items-center">
                 <div class="h-14 w-14 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-                <span class="text-lg font-semibold text-slate-600 tracking-tight">Sincronizando con base de datos...</span>
+                <span class="text-lg font-semibold text-slate-600 tracking-tight">Conectando puente seguro...</span>
             </div>
         </div>
 
@@ -39,18 +39,18 @@
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
                 <div class="flex items-center">
                     <div class="bg-blue-600 p-2.5 rounded-xl mr-4 shadow-lg shadow-blue-200">
-                        <i data-lucide="layout-grid" class="h-6 w-6 text-white"></i>
+                        <i data-lucide="shield-check" class="h-6 w-6 text-white"></i>
                     </div>
                     <div>
                         <h1 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">ABD Operarios</h1>
-                        <p class="text-[10px] text-blue-600 font-black uppercase tracking-[0.2em]">Visualizador Logístico</p>
+                        <p class="text-[10px] text-blue-600 font-black uppercase tracking-[0.2em]">Conexión Segura Activa</p>
                     </div>
                 </div>
                 <div class="hidden md:flex items-center gap-4">
                     <div class="text-right mr-4 border-r pr-4 border-slate-100">
                         <p class="text-[10px] font-bold text-slate-400 uppercase">Estado</p>
                         <p class="text-sm font-bold" :class="usingMock ? 'text-amber-500' : 'text-emerald-500'">
-                            {{ usingMock ? 'Modo de Prueba' : 'En línea' }}
+                            {{ usingMock ? 'Modo de Prueba' : 'En línea (Apps Script)' }}
                         </p>
                     </div>
                     <div class="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm">
@@ -60,7 +60,7 @@
             </div>
         </header>
 
-        <!-- ALERTA SI USA MOCK POR PERMISOS -->
+        <!-- ALERTA DE ERROR DEL PUENTE -->
         <transition name="fade">
             <div v-if="usingMock" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full mt-6">
                 <div class="bg-white border-2 border-red-200 p-5 rounded-2xl shadow-xl shadow-red-50 flex flex-col md:flex-row items-center gap-4">
@@ -68,9 +68,10 @@
                         <i data-lucide="alert-triangle" class="h-6 w-6 text-red-600"></i>
                     </div>
                     <div class="flex-1 text-center md:text-left">
-                        <h3 class="text-sm font-black text-slate-900">Acceso Denegado a la Planilla</h3>
+                        <h3 class="text-sm font-black text-slate-900">Error en el Puente Seguro</h3>
                         <p class="text-xs text-slate-500 mt-1 leading-relaxed">
-                            No pudimos leer la nueva planilla. Para que funcione, ve al botón azul "Compartir" en tu Google Sheet y cambia el acceso general a <strong>"Cualquier persona con el enlace"</strong> (Lector), o ve a Archivo > Compartir > <strong>Publicar en la web</strong> (como CSV).
+                            <strong>Motivo del error:</strong> <span class="text-red-600 font-bold">{{ errorMessage }}</span><br/>
+                            Asegúrate de que en la planilla el script apunte a la pestaña correcta ("Respuestas de formulario 1") y esté implementado para "Cualquier persona".
                         </p>
                     </div>
                 </div>
@@ -273,33 +274,34 @@
                 const data = ref([]);
                 const loading = ref(true);
                 const usingMock = ref(false);
+                const errorMessage = ref('');
                 const filters = ref({ search: '', zona: '', edadMax: 65, turnos: [] });
                 const selectedIds = ref(new Set());
                 const expandedId = ref(null);
                 const horarioCitacion = ref('08:30 hs');
 
-                // --- NUEVA URL DE LA PLANILLA ---
-                // Transforma el enlace de edit al enlace de exportación directa CSV
-                const SHEET_URL = "https://docs.google.com/spreadsheets/d/18cBpIZv1PSjS5M_3ilbfRCG5rXx4lS1S-cgsrkL3QiE/export?format=csv&gid=0";
+                // --- ESTA ES LA URL DEL PUENTE SEGURO QUE CREASTE EN APPS SCRIPT ---
+                const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzOECyvo2CJKMIMpP5SMw4ocy63loGfsvriYshuNInEL9YgRKHzYe86MmcgSWY_8hZwXA/exec";
 
+                // Formato de datos esperado por Apps Script (Matriz / Array de Arrays)
                 const MOCK_DATA = [
-                    {"id": 1, "Marca temporal": "15/5/2026", "Nombres y Apellidos": "Juan Pérez (Ejemplo)", "C.I": "1.234.567-8", "Fecha de nacimiento": "15/05/1995", "Zona de residencia": "Montevideo - Centro", "Tel. con 598": "099123456", "¿En qué turnos tenés disponibilidad para trabajar?": "Mañana, Tarde", "EdadCalculada": 30},
-                    {"id": 2, "Marca temporal": "15/5/2026", "Nombres y Apellidos": "María Silva (Ejemplo)", "C.I": "2.345.678-9", "Fecha de nacimiento": "20/08/1988", "Zona de residencia": "Montevideo - Cerrito", "Tel. con 598": "098765432", "¿En qué turnos tenés disponibilidad para trabajar?": "Noche", "EdadCalculada": 37}
+                    ["Marca temporal", "Nombres y Apellidos", "C.I", "Fecha de nacimiento", "Zona de residencia", "Tel. con 598", "¿En qué turnos tenés disponibilidad para trabajar?"],
+                    ["15/5/2026", "Juan Pérez (Ejemplo de Fallo)", "1.234.567-8", "15/05/1995", "Montevideo - Centro", "099123456", "Mañana, Tarde"],
+                    ["15/5/2026", "María Silva (Ejemplo de Fallo)", "2.345.678-9", "20/08/1988", "Montevideo - Cerrito", "098765432", "Noche"]
                 ];
 
-                const parseCSV = (csv) => {
-                    const lines = csv.split(/\r?\n/);
-                    if (lines.length < 2) return [];
-                    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+                const processData = (rawArray) => {
+                    if (rawArray.length < 2) return [];
+                    const headers = rawArray[0].map(h => h.toString().trim());
                     const result = [];
-                    for (let i = 1; i < lines.length; i++) {
-                        if (!lines[i].trim()) continue;
-                        const row = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || lines[i].split(',');
+                    
+                    for (let i = 1; i < rawArray.length; i++) {
+                        const row = rawArray[i];
                         const obj = { id: i };
                         let hasValidData = false;
                         
                         headers.forEach((h, idx) => {
-                            let val = row[idx] ? row[idx].trim().replace(/^"|"$/g, '') : '';
+                            let val = row[idx] !== undefined && row[idx] !== null ? row[idx].toString().trim() : '';
                             obj[h] = val;
                             if (val) hasValidData = true;
                         });
@@ -335,19 +337,29 @@
 
                 onMounted(async () => {
                     try {
-                        const res = await fetch(SHEET_URL);
-                        const txt = await res.text();
+                        const res = await fetch(APPS_SCRIPT_URL);
+                        const text = await res.text();
                         
-                        // Si Google devuelve HTML (la pantalla de iniciar sesión), es porque la planilla es PRIVADA
-                        if (txt.includes('<!DOCTYPE html>') || txt.length < 50) {
-                            throw new Error("Acceso denegado. Planilla Privada.");
+                        let json;
+                        try {
+                            json = JSON.parse(text);
+                        } catch(err) {
+                            // Si el JSON falla, suele ser porque Google manda una página HTML de inicio de sesión
+                            if (text.includes("<html")) {
+                                throw new Error("Permisos denegados. Debes seleccionar 'Cualquier persona' en la configuración de Apps Script.");
+                            }
+                            throw new Error("Respuesta inválida del servidor. Revisa el código del Script.");
                         }
+
+                        // El script devuelve un { error: "..." } si la pestaña no existe
+                        if (json.error) throw new Error(json.error);
                         
-                        data.value = parseCSV(txt);
+                        data.value = processData(json);
                     } catch (e) {
-                        console.error("Error cargando planilla:", e);
+                        console.error("Fallo de conexión:", e);
+                        errorMessage.value = e.message;
                         usingMock.value = true;
-                        data.value = MOCK_DATA;
+                        data.value = processData(MOCK_DATA);
                     } finally {
                         loading.value = false;
                         nextTick(() => { if(window.lucide) window.lucide.createIcons(); });
@@ -406,7 +418,7 @@
                     link.click();
                 };
 
-                return { data, loading, usingMock, filters, turnosDisponibles, filteredData, selectedIds, expandedId, horarioCitacion, isAllSelected, hasActiveFilters, toggleSelection, toggleSelectAll, clearSelection, toggleExpand, getSelectedData, getInitials, resetFilters, shouldShowField, formatWhatsAppLink, downloadCSV };
+                return { data, loading, usingMock, errorMessage, filters, turnosDisponibles, filteredData, selectedIds, expandedId, horarioCitacion, isAllSelected, hasActiveFilters, toggleSelection, toggleSelectAll, clearSelection, toggleExpand, getSelectedData, getInitials, resetFilters, shouldShowField, formatWhatsAppLink, downloadCSV };
             }
         }).mount('#app');
     </script>
