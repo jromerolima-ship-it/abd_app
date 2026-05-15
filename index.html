@@ -438,9 +438,9 @@
                             itemNombre.includes(term) || itemCI.includes(term)
                         );
                         
-                        // MATCH ZONA (Multipalabra e ignorando acentos)
+                        // MATCH ZONA (Multipalabra incluyente OR: trae si coincide al menos una palabra)
                         const itemZona = normalizeStr(item[kZona]);
-                        const matchZona = zonaTerms.length === 0 || zonaTerms.every(term => itemZona.includes(term));
+                        const matchZona = zonaTerms.length === 0 || zonaTerms.some(term => itemZona.includes(term));
                         
                         // MATCH EDAD
                         const edad = item.EdadCalculada;
