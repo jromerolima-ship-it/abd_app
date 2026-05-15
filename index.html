@@ -4,8 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión de Postulantes - RRHH</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Vue.js 3 -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     
     <style>
@@ -23,25 +26,33 @@
 <body class="bg-slate-50 font-sans antialiased text-slate-900">
     <div id="app" v-cloak class="min-h-screen flex flex-col">
         
+        <!-- PANTALLA DE CARGA -->
         <div v-if="loading" class="fixed inset-0 z-50 flex items-center justify-center bg-white/90 backdrop-blur-md">
             <div class="flex flex-col items-center">
                 <div class="h-14 w-14 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-                <span class="text-lg font-semibold text-slate-600 tracking-tight">Sincronizando con planilla privada...</span>
+                <span class="text-lg font-semibold text-slate-600 tracking-tight">Sincronizando con base de datos...</span>
             </div>
         </div>
 
+        <!-- HEADER -->
         <header class="bg-white shadow-sm border-b sticky top-0 z-40">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
                 <div class="flex items-center">
                     <div class="bg-blue-600 p-2.5 rounded-xl mr-4 shadow-lg shadow-blue-200">
-                        <i data-lucide="shield-check" class="h-6 w-6 text-white"></i>
+                        <i data-lucide="layout-grid" class="h-6 w-6 text-white"></i>
                     </div>
                     <div>
                         <h1 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">ABD Operarios</h1>
-                        <p class="text-[10px] text-blue-600 font-black uppercase tracking-[0.2em]">Conexión Segura Activa</p>
+                        <p class="text-[10px] text-blue-600 font-black uppercase tracking-[0.2em]">Visualizador Logístico</p>
                     </div>
                 </div>
                 <div class="hidden md:flex items-center gap-4">
+                    <div class="text-right mr-4 border-r pr-4 border-slate-100">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase">Estado</p>
+                        <p class="text-sm font-bold" :class="usingMock ? 'text-amber-500' : 'text-emerald-500'">
+                            {{ usingMock ? 'Modo de Prueba' : 'En línea' }}
+                        </p>
+                    </div>
                     <div class="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm">
                         {{ data.length }} Postulantes
                     </div>
@@ -49,8 +60,26 @@
             </div>
         </header>
 
+        <!-- ALERTA SI USA MOCK POR PERMISOS -->
+        <transition name="fade">
+            <div v-if="usingMock" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full mt-6">
+                <div class="bg-white border-2 border-red-200 p-5 rounded-2xl shadow-xl shadow-red-50 flex flex-col md:flex-row items-center gap-4">
+                    <div class="bg-red-100 p-3 rounded-full">
+                        <i data-lucide="alert-triangle" class="h-6 w-6 text-red-600"></i>
+                    </div>
+                    <div class="flex-1 text-center md:text-left">
+                        <h3 class="text-sm font-black text-slate-900">Acceso Denegado a la Planilla</h3>
+                        <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+                            No pudimos leer la nueva planilla. Para que funcione, ve al botón azul "Compartir" en tu Google Sheet y cambia el acceso general a <strong>"Cualquier persona con el enlace"</strong> (Lector), o ve a Archivo > Compartir > <strong>Publicar en la web</strong> (como CSV).
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </transition>
+
         <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col lg:flex-row gap-8 flex-1 w-full">
             
+            <!-- FILTROS (SIDEBAR) -->
             <aside class="w-full lg:w-80 flex-shrink-0">
                 <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 sticky top-28">
                     <div class="flex items-center justify-between mb-8">
@@ -101,6 +130,7 @@
                 </div>
             </aside>
 
+            <!-- TABLA DE RESULTADOS -->
             <div class="flex-1 flex flex-col space-y-6 min-w-0">
                 
                 <div class="bg-white rounded-[2.5rem] shadow-sm border border-slate-200 flex flex-col h-[650px] overflow-hidden">
@@ -145,7 +175,7 @@
                                                     {{ getInitials(item['Nombres y Apellidos']) }}
                                                 </div>
                                                 <div>
-                                                    <div class="font-bold text-slate-900 text-sm leading-none mb-1">{{ item['Nombres y Apellidos'] }}</div>
+                                                    <div class="font-bold text-slate-900 text-sm leading-none mb-1">{{ item['Nombres y Apellidos'] || 'Sin nombre' }}</div>
                                                     <div class="text-[10px] text-slate-400 font-bold uppercase truncate max-w-[120px]">{{ item['Zona de residencia'] || 'Zona sin especificar' }}</div>
                                                 </div>
                                             </div>
@@ -220,7 +250,7 @@
                                 <div class="space-y-3 max-h-36 overflow-y-auto custom-scrollbar pr-2">
                                     <a v-for="item in getSelectedData()" :key="item.id" :href="formatWhatsAppLink(item)" target="_blank" 
                                         class="flex items-center justify-between bg-white/5 p-3 rounded-2xl border border-white/5 hover:border-[#25d366]/50 transition-all group no-underline">
-                                        <span class="text-sm font-bold text-white truncate mr-3">{{ item['Nombres y Apellidos'] }}</span>
+                                        <span class="text-sm font-bold text-white truncate mr-3">{{ item['Nombres y Apellidos'] || 'Sin nombre' }}</span>
                                         <span class="bg-[#25d366] text-[#075e54] text-[10px] font-black px-3 py-1.5 rounded-xl flex items-center flex-shrink-0 group-hover:scale-105 transition-transform">
                                             CONTACTAR <i data-lucide="arrow-up-right" class="h-3 w-3 ml-1.5"></i>
                                         </span>
@@ -248,49 +278,56 @@
                 const expandedId = ref(null);
                 const horarioCitacion = ref('08:30 hs');
 
-                // --- CONFIGURACIÓN DEL PUENTE SEGURO ACTUALIZADA ---
-                const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzOECyvo2CJKMIMpP5SMw4ocy63loGfsvriYshuNInEL9YgRKHzYe86MmcgSWY_8hZwXA/exec";
+                // --- NUEVA URL DE LA PLANILLA ---
+                // Transforma el enlace de edit al enlace de exportación directa CSV
+                const SHEET_URL = "https://docs.google.com/spreadsheets/d/18cBpIZv1PSjS5M_3ilbfRCG5rXx4lS1S-cgsrkL3QiE/export?format=csv&gid=0";
 
                 const MOCK_DATA = [
-                    ["Marca temporal", "Nombres y Apellidos", "C.I", "Fecha de nacimiento", "Zona de residencia", "Tel. con 598", "¿En qué turnos tenés disponibilidad para trabajar?"],
-                    ["15/5/2026", "Juan Pérez (Ejemplo)", "1.234.567-8", "15/05/1995", "Montevideo - Centro", "099123456", "Mañana, Tarde"],
-                    ["15/5/2026", "María Silva (Ejemplo)", "2.345.678-9", "20/08/1988", "Montevideo - Cerrito", "098765432", "Noche"]
+                    {"id": 1, "Marca temporal": "15/5/2026", "Nombres y Apellidos": "Juan Pérez (Ejemplo)", "C.I": "1.234.567-8", "Fecha de nacimiento": "15/05/1995", "Zona de residencia": "Montevideo - Centro", "Tel. con 598": "099123456", "¿En qué turnos tenés disponibilidad para trabajar?": "Mañana, Tarde", "EdadCalculada": 30},
+                    {"id": 2, "Marca temporal": "15/5/2026", "Nombres y Apellidos": "María Silva (Ejemplo)", "C.I": "2.345.678-9", "Fecha de nacimiento": "20/08/1988", "Zona de residencia": "Montevideo - Cerrito", "Tel. con 598": "098765432", "¿En qué turnos tenés disponibilidad para trabajar?": "Noche", "EdadCalculada": 37}
                 ];
 
-                const processData = (rawArray) => {
-                    if (rawArray.length < 2) return [];
-                    const headers = rawArray[0].map(h => h.toString().trim());
+                const parseCSV = (csv) => {
+                    const lines = csv.split(/\r?\n/);
+                    if (lines.length < 2) return [];
+                    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
                     const result = [];
-                    
-                    for (let i = 1; i < rawArray.length; i++) {
-                        const row = rawArray[i];
+                    for (let i = 1; i < lines.length; i++) {
+                        if (!lines[i].trim()) continue;
+                        const row = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || lines[i].split(',');
                         const obj = { id: i };
+                        let hasValidData = false;
+                        
                         headers.forEach((h, idx) => {
-                            obj[h] = row[idx] ? row[idx].toString().trim() : '';
+                            let val = row[idx] ? row[idx].trim().replace(/^"|"$/g, '') : '';
+                            obj[h] = val;
+                            if (val) hasValidData = true;
                         });
                         
-                        // Cálculo de edad
+                        if (!hasValidData) continue;
+
+                        // Cálculo de edad dinámico
                         if(obj['Fecha de nacimiento']) {
                             try {
-                                const bDate = new Date(obj['Fecha de nacimiento']);
-                                if (!isNaN(bDate)) {
+                                const p = obj['Fecha de nacimiento'].split(/[-/]/);
+                                if(p.length === 3) {
+                                    let b;
+                                    if (p[0].length === 4) b = new Date(p[0], p[1]-1, p[2]);
+                                    else b = new Date(p[2].length === 2 ? "20"+p[2] : p[2], p[1]-1, p[0]);
+                                    
                                     const t = new Date();
-                                    let age = t.getFullYear() - bDate.getFullYear();
-                                    if (t.getMonth() < bDate.getMonth() || (t.getMonth() === bDate.getMonth() && t.getDate() < bDate.getDate())) age--;
-                                    obj.EdadCalculada = age;
+                                    let age = t.getFullYear() - b.getFullYear();
+                                    if (t.getMonth() < b.getMonth() || (t.getMonth() === b.getMonth() && t.getDate() < b.getDate())) age--;
+                                    obj.EdadCalculada = isNaN(age) ? (parseInt(obj['Edad']) || 25) : age;
                                 } else {
-                                    const p = obj['Fecha de nacimiento'].split(/[-/]/);
-                                    if(p.length === 3) {
-                                        const b = new Date(p[2].length === 2 ? "20"+p[2] : p[2], p[1]-1, p[0]);
-                                        const t = new Date();
-                                        let age = t.getFullYear() - b.getFullYear();
-                                        if (t.getMonth() < b.getMonth() || (t.getMonth() === b.getMonth() && t.getDate() < b.getDate())) age--;
-                                        obj.EdadCalculada = age;
-                                    }
+                                    obj.EdadCalculada = parseInt(obj['Edad']) || 25;
                                 }
-                            } catch(e) { obj.EdadCalculada = 25; }
+                            } catch(e) {
+                                obj.EdadCalculada = parseInt(obj['Edad']) || 25;
+                            }
+                        } else { 
+                            obj.EdadCalculada = parseInt(obj['Edad']) || 25; 
                         }
-                        if(!obj.EdadCalculada) obj.EdadCalculada = 25;
                         result.push(obj);
                     }
                     return result;
@@ -298,14 +335,19 @@
 
                 onMounted(async () => {
                     try {
-                        const res = await fetch(APPS_SCRIPT_URL);
-                        const json = await res.json();
-                        if (json.error) throw new Error(json.error);
-                        data.value = processData(json);
+                        const res = await fetch(SHEET_URL);
+                        const txt = await res.text();
+                        
+                        // Si Google devuelve HTML (la pantalla de iniciar sesión), es porque la planilla es PRIVADA
+                        if (txt.includes('<!DOCTYPE html>') || txt.length < 50) {
+                            throw new Error("Acceso denegado. Planilla Privada.");
+                        }
+                        
+                        data.value = parseCSV(txt);
                     } catch (e) {
-                        console.warn("Fallo conexión segura. Usando datos Mock.");
+                        console.error("Error cargando planilla:", e);
                         usingMock.value = true;
-                        data.value = processData(MOCK_DATA);
+                        data.value = MOCK_DATA;
                     } finally {
                         loading.value = false;
                         nextTick(() => { if(window.lucide) window.lucide.createIcons(); });
@@ -348,13 +390,13 @@
                 const formatWhatsAppLink = (item) => {
                     let tel = (item['Tel. con 598'] || '').replace(/\D/g, '');
                     if (tel && !tel.startsWith('598')) tel = '598' + tel;
-                    const msg = `Hola ${item['Nombres y Apellidos']}, te citamos por tu postulación a ABD Operarios. Debes presentarte en el horario de las ${horarioCitacion.value}.`;
+                    const msg = `Hola ${item['Nombres y Apellidos'] || ''}, te citamos por tu postulación a ABD Operarios. Debes presentarte en el horario de las ${horarioCitacion.value}.`;
                     return `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
                 };
                 const downloadCSV = () => {
                     const sel = getSelectedData();
                     const headers = ['Nombre', 'Cedula', 'Telefono', 'Zona', 'Turnos'];
-                    const rows = sel.map(i => [`"${i['Nombres y Apellidos']}"`, `"${i['C.I']}"`, `"${i['Tel. con 598']}"`, `"${i['Zona de residencia']}"`, `"${i['¿En qué turnos tenés disponibilidad para trabajar?']}"`].join(','));
+                    const rows = sel.map(i => [`"${i['Nombres y Apellidos'] || ''}"`, `"${i['C.I'] || ''}"`, `"${i['Tel. con 598'] || ''}"`, `"${i['Zona de residencia'] || ''}"`, `"${i['¿En qué turnos tenés disponibilidad para trabajar?'] || ''}"`].join(','));
                     const content = '\uFEFF' + [headers.join(','), ...rows].join('\n');
                     const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
                     const url = URL.createObjectURL(blob);
