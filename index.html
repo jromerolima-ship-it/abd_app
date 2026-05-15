@@ -124,7 +124,7 @@
 
                         <div>
                             <label class="block text-[11px] font-black text-slate-500 uppercase mb-3">Zona de Residencia</label>
-                            <input type="text" v-model="filters.zona" placeholder="Ej: Montevideo" 
+                            <input type="text" v-model="filters.zona" placeholder="Ej: Montevideo Centro" 
                                 class="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all">
                         </div>
 
@@ -413,7 +413,11 @@
                     return data.value.filter(item => {
                         const s = filters.value.search.toLowerCase();
                         const matchSearch = (item['Nombres y Apellidos'] || '').toLowerCase().includes(s) || (item['C.I'] || '').includes(s);
-                        const matchZona = (item['Zona de residencia'] || '').toLowerCase().includes(filters.value.zona.toLowerCase());
+                        
+                        // Evaluar búsqueda multipalabra para la Zona de residencia
+                        const zonaTerms = filters.value.zona.toLowerCase().split(' ').filter(term => term.trim() !== '');
+                        const itemZona = (item['Zona de residencia'] || '').toLowerCase();
+                        const matchZona = zonaTerms.length === 0 || zonaTerms.every(term => itemZona.includes(term));
                         
                         // Nuevo filtro de Edad por Rango
                         const edad = item.EdadCalculada;
@@ -464,10 +468,11 @@
                     return strVal;
                 };
 
+                // Enlace de WhatsApp con Formulario incrustado
                 const formatWhatsAppLink = (item) => {
                     let tel = (item['Tel. con 598'] || '').replace(/\D/g, '');
                     if (tel && !tel.startsWith('598')) tel = '598' + tel;
-                    const msg = `Hola ${item['Nombres y Apellidos'] || ''}, te citamos por tu postulación a ABD Operarios. Debes presentarte en el horario de las ${horarioCitacion.value}.`;
+                    const msg = `Hola ${item['Nombres y Apellidos'] || ''}, te citamos por tu postulación a ABD Operarios. Debes presentarte en el horario de las ${horarioCitacion.value}. Por favor completa el siguiente formulario: https://forms.gle/TC6ZKBzLwmWEi9LD8`;
                     return `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
                 };
                 
