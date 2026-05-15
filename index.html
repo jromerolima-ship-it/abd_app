@@ -4,11 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión de Postulantes - RRHH</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Vue.js 3 -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     
     <style>
@@ -21,45 +18,30 @@
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
-        
-        /* Estilo para los inputs focus */
-        .input-focus:focus {
-            ring-color: #2563eb;
-            border-color: #2563eb;
-            background-color: white;
-        }
     </style>
 </head>
 <body class="bg-slate-50 font-sans antialiased text-slate-900">
     <div id="app" v-cloak class="min-h-screen flex flex-col">
         
-        <!-- PANTALLA DE CARGA -->
         <div v-if="loading" class="fixed inset-0 z-50 flex items-center justify-center bg-white/90 backdrop-blur-md">
             <div class="flex flex-col items-center">
                 <div class="h-14 w-14 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-                <span class="text-lg font-semibold text-slate-600 tracking-tight">Sincronizando base de datos...</span>
+                <span class="text-lg font-semibold text-slate-600 tracking-tight">Sincronizando con planilla privada...</span>
             </div>
         </div>
 
-        <!-- HEADER -->
         <header class="bg-white shadow-sm border-b sticky top-0 z-40">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
                 <div class="flex items-center">
                     <div class="bg-blue-600 p-2.5 rounded-xl mr-4 shadow-lg shadow-blue-200">
-                        <i data-lucide="layout-grid" class="h-6 w-6 text-white"></i>
+                        <i data-lucide="shield-check" class="h-6 w-6 text-white"></i>
                     </div>
                     <div>
                         <h1 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">ABD Operarios</h1>
-                        <p class="text-[10px] text-blue-600 font-black uppercase tracking-[0.2em]">Visualizador Logístico</p>
+                        <p class="text-[10px] text-blue-600 font-black uppercase tracking-[0.2em]">Conexión Segura Activa</p>
                     </div>
                 </div>
                 <div class="hidden md:flex items-center gap-4">
-                    <div class="text-right mr-4 border-r pr-4 border-slate-100">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase">Estado Conexión</p>
-                        <p class="text-sm font-bold" :class="usingMock ? 'text-amber-500' : 'text-emerald-500'">
-                            {{ usingMock ? 'Modo Offline' : 'En línea (Google Drive)' }}
-                        </p>
-                    </div>
                     <div class="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm">
                         {{ data.length }} Postulantes
                     </div>
@@ -67,26 +49,8 @@
             </div>
         </header>
 
-        <!-- ALERTA DE CONFIGURACIÓN -->
-        <transition name="fade">
-            <div v-if="usingMock" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full mt-6">
-                <div class="bg-white border-2 border-amber-200 p-5 rounded-2xl shadow-xl shadow-amber-50 flex flex-col md:flex-row items-center gap-4">
-                    <div class="bg-amber-100 p-3 rounded-full">
-                        <i data-lucide="settings" class="h-6 w-6 text-amber-600"></i>
-                    </div>
-                    <div class="flex-1 text-center md:text-left">
-                        <h3 class="text-sm font-black text-slate-900">¿Cómo conectar la planilla real?</h3>
-                        <p class="text-xs text-slate-500 mt-1 leading-relaxed">
-                            Si ves este mensaje, es posible que el enlace de la planilla no esté accesible. Asegúrate de que el Google Sheet esté en <strong>Archivo > Compartir > Publicar en la Web</strong> como <strong>CSV</strong>.
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </transition>
-
         <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col lg:flex-row gap-8 flex-1 w-full">
             
-            <!-- FILTROS (SIDEBAR) -->
             <aside class="w-full lg:w-80 flex-shrink-0">
                 <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 sticky top-28">
                     <div class="flex items-center justify-between mb-8">
@@ -99,7 +63,6 @@
                     </div>
                     
                     <div class="space-y-7">
-                        <!-- Buscar -->
                         <div>
                             <label class="block text-[11px] font-black text-slate-500 uppercase mb-3">Búsqueda Global</label>
                             <div class="relative group">
@@ -109,7 +72,6 @@
                             </div>
                         </div>
 
-                        <!-- Edad -->
                         <div>
                             <div class="flex justify-between items-center mb-3">
                                 <label class="text-[11px] font-black text-slate-500 uppercase">Límite de Edad</label>
@@ -119,14 +81,12 @@
                                 class="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-blue-600">
                         </div>
 
-                        <!-- Zona -->
                         <div>
                             <label class="block text-[11px] font-black text-slate-500 uppercase mb-3">Zona de Residencia</label>
                             <input type="text" v-model="filters.zona" placeholder="Ej: Montevideo" 
                                 class="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all">
                         </div>
 
-                        <!-- Turnos -->
                         <div>
                             <label class="block text-[11px] font-black text-slate-500 uppercase mb-4">Disponibilidad</label>
                             <div class="space-y-2.5 max-h-48 overflow-y-auto custom-scrollbar pr-2">
@@ -141,7 +101,6 @@
                 </div>
             </aside>
 
-            <!-- TABLA DE RESULTADOS -->
             <div class="flex-1 flex flex-col space-y-6 min-w-0">
                 
                 <div class="bg-white rounded-[2.5rem] shadow-sm border border-slate-200 flex flex-col h-[650px] overflow-hidden">
@@ -221,10 +180,8 @@
                     </div>
                 </div>
 
-                <!-- PANEL DE ACCIONES FLOTANTE -->
                 <transition name="slide-down">
                     <div v-if="selectedIds.size > 0" class="bg-slate-900 rounded-[2.5rem] shadow-2xl p-8 text-white relative overflow-hidden">
-                        <!-- Decoración -->
                         <div class="absolute -right-16 -top-16 w-48 h-48 bg-blue-600 rounded-full blur-[80px] opacity-20"></div>
 
                         <div class="flex flex-col md:flex-row justify-between items-center gap-6 mb-8 border-b border-white/10 pb-6 relative z-10">
@@ -241,7 +198,6 @@
                         </div>
                         
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 relative z-10">
-                            <!-- Descargas -->
                             <div class="bg-white/5 p-6 rounded-3xl border border-white/10 flex flex-col">
                                 <h4 class="text-xs font-black uppercase tracking-widest mb-4 flex items-center">
                                     <i data-lucide="file-down" class="h-4 w-4 mr-2 text-blue-400"></i> Reporte para Sistemas
@@ -252,7 +208,6 @@
                                 </button>
                             </div>
 
-                            <!-- WhatsApp -->
                             <div class="bg-[#128c7e]/10 p-6 rounded-3xl border border-[#128c7e]/20 flex flex-col">
                                 <h4 class="text-xs font-black uppercase tracking-widest mb-4 flex items-center text-[#25d366]">
                                     <i data-lucide="message-square" class="h-4 w-4 mr-2"></i> Citación Directa (WA)
@@ -293,40 +248,49 @@
                 const expandedId = ref(null);
                 const horarioCitacion = ref('08:30 hs');
 
-                const MOCK_CSV = `Marca temporal,Nombres y Apellidos,C.I,Fecha de nacimiento,Zona de residencia,Tel. con 598,¿En qué turnos tenés disponibilidad para trabajar?
-"15/5/2026","Juan Pérez","1.234.567-8","15/05/1995","Montevideo - Centro","099123456","Mañana, Tarde"
-"15/5/2026","María Silva","2.345.678-9","20/08/1988","Montevideo - Cerrito","098765432","Noche"
-"15/5/2026","Carlos Gómez","3.456.789-0","10/01/2001","Canelones - Solymar","091234567","Mañana"
-"15/5/2026","Ana Martínez","4.567.890-1","05/11/1982","Montevideo - Prado","092345678","Tarde"`;
+                // --- CONFIGURACIÓN DEL PUENTE SEGURO ACTUALIZADA ---
+                const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzOECyvo2CJKMIMpP5SMw4ocy63loGfsvriYshuNInEL9YgRKHzYe86MmcgSWY_8hZwXA/exec";
 
-                // --- CONFIGURACIÓN DE URL ACTUALIZADA ---
-                const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT2vrxgX2GGjcG3ZzDpXLgPMGcbWatwc2T5Ro1SgHWXSyYX0o29vpgUgkj07Z3PEg/pub?output=csv";
+                const MOCK_DATA = [
+                    ["Marca temporal", "Nombres y Apellidos", "C.I", "Fecha de nacimiento", "Zona de residencia", "Tel. con 598", "¿En qué turnos tenés disponibilidad para trabajar?"],
+                    ["15/5/2026", "Juan Pérez (Ejemplo)", "1.234.567-8", "15/05/1995", "Montevideo - Centro", "099123456", "Mañana, Tarde"],
+                    ["15/5/2026", "María Silva (Ejemplo)", "2.345.678-9", "20/08/1988", "Montevideo - Cerrito", "098765432", "Noche"]
+                ];
 
-                const parseCSV = (csv) => {
-                    const lines = csv.split(/\r?\n/);
-                    if (lines.length < 2) return [];
-                    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+                const processData = (rawArray) => {
+                    if (rawArray.length < 2) return [];
+                    const headers = rawArray[0].map(h => h.toString().trim());
                     const result = [];
-                    for (let i = 1; i < lines.length; i++) {
-                        if (!lines[i].trim()) continue;
-                        const row = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || lines[i].split(',');
+                    
+                    for (let i = 1; i < rawArray.length; i++) {
+                        const row = rawArray[i];
                         const obj = { id: i };
                         headers.forEach((h, idx) => {
-                            let val = row[idx] ? row[idx].trim().replace(/^"|"$/g, '') : '';
-                            obj[h] = val;
+                            obj[h] = row[idx] ? row[idx].toString().trim() : '';
                         });
                         
                         // Cálculo de edad
                         if(obj['Fecha de nacimiento']) {
-                            const p = obj['Fecha de nacimiento'].split(/[-/]/);
-                            if(p.length === 3) {
-                                const b = new Date(p[2].length === 2 ? "20"+p[2] : p[2], p[1]-1, p[0]);
-                                const t = new Date();
-                                let age = t.getFullYear() - b.getFullYear();
-                                if (t.getMonth() < b.getMonth() || (t.getMonth() === b.getMonth() && t.getDate() < b.getDate())) age--;
-                                obj.EdadCalculada = isNaN(age) ? 25 : age;
-                            }
-                        } else { obj.EdadCalculada = 25; }
+                            try {
+                                const bDate = new Date(obj['Fecha de nacimiento']);
+                                if (!isNaN(bDate)) {
+                                    const t = new Date();
+                                    let age = t.getFullYear() - bDate.getFullYear();
+                                    if (t.getMonth() < bDate.getMonth() || (t.getMonth() === bDate.getMonth() && t.getDate() < bDate.getDate())) age--;
+                                    obj.EdadCalculada = age;
+                                } else {
+                                    const p = obj['Fecha de nacimiento'].split(/[-/]/);
+                                    if(p.length === 3) {
+                                        const b = new Date(p[2].length === 2 ? "20"+p[2] : p[2], p[1]-1, p[0]);
+                                        const t = new Date();
+                                        let age = t.getFullYear() - b.getFullYear();
+                                        if (t.getMonth() < b.getMonth() || (t.getMonth() === b.getMonth() && t.getDate() < b.getDate())) age--;
+                                        obj.EdadCalculada = age;
+                                    }
+                                }
+                            } catch(e) { obj.EdadCalculada = 25; }
+                        }
+                        if(!obj.EdadCalculada) obj.EdadCalculada = 25;
                         result.push(obj);
                     }
                     return result;
@@ -334,15 +298,14 @@
 
                 onMounted(async () => {
                     try {
-                        const res = await fetch(SHEET_URL);
-                        const txt = await res.text();
-                        // Google devuelve HTML si es privado o requiere login
-                        if (txt.includes('<!DOCTYPE html>') || txt.length < 50) throw new Error("Acceso denegado");
-                        data.value = parseCSV(txt);
+                        const res = await fetch(APPS_SCRIPT_URL);
+                        const json = await res.json();
+                        if (json.error) throw new Error(json.error);
+                        data.value = processData(json);
                     } catch (e) {
-                        console.warn("Fallo conexión Google. Usando datos Mock.");
+                        console.warn("Fallo conexión segura. Usando datos Mock.");
                         usingMock.value = true;
-                        data.value = parseCSV(MOCK_CSV);
+                        data.value = processData(MOCK_DATA);
                     } finally {
                         loading.value = false;
                         nextTick(() => { if(window.lucide) window.lucide.createIcons(); });
@@ -374,42 +337,24 @@
 
                 const isAllSelected = computed(() => filteredData.value.length > 0 && selectedIds.value.size === filteredData.value.length);
                 const hasActiveFilters = computed(() => filters.value.search !== '' || filters.value.zona !== '' || filters.value.edadMax < 65 || filters.value.turnos.length > 0);
-
-                const toggleSelection = (id) => {
-                    const s = new Set(selectedIds.value);
-                    if (s.has(id)) s.delete(id); else s.add(id);
-                    selectedIds.value = s;
-                };
-
-                const toggleSelectAll = () => {
-                    if (isAllSelected.value) selectedIds.value = new Set();
-                    else selectedIds.value = new Set(filteredData.value.map(d => d.id));
-                };
-
+                const toggleSelection = (id) => { const s = new Set(selectedIds.value); if (s.has(id)) s.delete(id); else s.add(id); selectedIds.value = s; };
+                const toggleSelectAll = () => { if (isAllSelected.value) selectedIds.value = new Set(); else selectedIds.value = new Set(filteredData.value.map(d => d.id)); };
                 const clearSelection = () => selectedIds.value = new Set();
                 const toggleExpand = (id) => { expandedId.value = expandedId.value === id ? null : id; nextTick(() => lucide.createIcons()); };
                 const getSelectedData = () => filteredData.value.filter(d => selectedIds.value.has(d.id));
                 const getInitials = (n) => n ? n.trim().split(' ').map(p => p[0]).join('').substring(0,2).toUpperCase() : '??';
                 const resetFilters = () => filters.value = { search: '', zona: '', edadMax: 65, turnos: [] };
                 const shouldShowField = (k, v) => k !== 'id' && k !== 'EdadCalculada' && v && !k.includes('DT');
-
                 const formatWhatsAppLink = (item) => {
                     let tel = (item['Tel. con 598'] || '').replace(/\D/g, '');
                     if (tel && !tel.startsWith('598')) tel = '598' + tel;
                     const msg = `Hola ${item['Nombres y Apellidos']}, te citamos por tu postulación a ABD Operarios. Debes presentarte en el horario de las ${horarioCitacion.value}.`;
                     return `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
                 };
-
                 const downloadCSV = () => {
                     const sel = getSelectedData();
                     const headers = ['Nombre', 'Cedula', 'Telefono', 'Zona', 'Turnos'];
-                    const rows = sel.map(i => [
-                        `"${i['Nombres y Apellidos']}"`, 
-                        `"${i['C.I']}"`, 
-                        `"${i['Tel. con 598']}"`, 
-                        `"${i['Zona de residencia']}"`, 
-                        `"${i['¿En qué turnos tenés disponibilidad para trabajar?']}"`
-                    ].join(','));
+                    const rows = sel.map(i => [`"${i['Nombres y Apellidos']}"`, `"${i['C.I']}"`, `"${i['Tel. con 598']}"`, `"${i['Zona de residencia']}"`, `"${i['¿En qué turnos tenés disponibilidad para trabajar?']}"`].join(','));
                     const content = '\uFEFF' + [headers.join(','), ...rows].join('\n');
                     const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
                     const url = URL.createObjectURL(blob);
@@ -419,12 +364,7 @@
                     link.click();
                 };
 
-                return {
-                    data, loading, usingMock, filters, turnosDisponibles, filteredData,
-                    selectedIds, expandedId, horarioCitacion, isAllSelected, hasActiveFilters,
-                    toggleSelection, toggleSelectAll, clearSelection, toggleExpand,
-                    getSelectedData, getInitials, resetFilters, shouldShowField, formatWhatsAppLink, downloadCSV
-                };
+                return { data, loading, usingMock, filters, turnosDisponibles, filteredData, selectedIds, expandedId, horarioCitacion, isAllSelected, hasActiveFilters, toggleSelection, toggleSelectAll, clearSelection, toggleExpand, getSelectedData, getInitials, resetFilters, shouldShowField, formatWhatsAppLink, downloadCSV };
             }
         }).mount('#app');
     </script>
