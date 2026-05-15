@@ -89,7 +89,7 @@
             </div>
         </transition>
 
-        <!-- CONTENIDO PRINCIPAL (Se ajusta dinámicamente si el panel está abierto) -->
+        <!-- CONTENIDO PRINCIPAL -->
         <main class="mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col lg:flex-row gap-8 flex-1 w-full transition-all duration-300 ease-in-out"
               :class="selectedIds.size > 0 ? 'max-w-[100%] xl:pr-[470px]' : 'max-w-7xl'">
             
@@ -191,6 +191,7 @@
                                     <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-widest hidden sm:table-cell">Cédula Identidad</th>
                                     <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-widest hidden md:table-cell text-center">Edad</th>
                                     <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Teléfono Directo</th>
+                                    <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-widest hidden md:table-cell text-center">Estado</th>
                                     <th class="p-4 w-16"></th>
                                 </tr>
                             </thead>
@@ -221,7 +222,15 @@
                                                 {{ item.EdadCalculada }} Años
                                             </span>
                                         </td>
-                                        <td class="p-4 text-sm text-slate-800 font-black tracking-tight">{{ item['Tel. con 598'] }}</td>
+                                        <td class="p-4 text-sm text-slate-800 font-black tracking-tight">
+                                            <!-- Teléfono formateado para visualización local -->
+                                            {{ formatDisplayPhone(item['Tel. con 598']) }}
+                                        </td>
+                                        <td class="p-4 hidden md:table-cell text-center">
+                                            <span :class="getStatusColor(item[estadoKey])" class="text-[10px] font-black px-3 py-1.5 rounded-xl uppercase tracking-widest">
+                                                {{ getStatusText(item[estadoKey]) }}
+                                            </span>
+                                        </td>
                                         <td class="p-4 text-right">
                                             <button @click.stop="toggleExpand(item.id)" 
                                                 class="h-10 w-10 rounded-xl bg-slate-50 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all flex items-center justify-center">
@@ -229,9 +238,9 @@
                                             </button>
                                         </td>
                                     </tr>
-                                    <!-- VISTA EXPANDIDA -->
+                                    <!-- VISTA EXPANDIDA (Colspan actualizado a 7) -->
                                     <tr v-if="expandedId === item.id">
-                                        <td colspan="6" class="bg-slate-50/50 p-8 border-y border-slate-100">
+                                        <td colspan="7" class="bg-slate-50/50 p-8 border-y border-slate-100">
                                             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
                                                 <div v-for="(val, key) in item" :key="key" v-show="shouldShowField(key, val)" class="flex flex-col">
                                                     <span class="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">{{ key }}</span>
@@ -275,7 +284,7 @@
                     </div>
                 </div>
                 
-                <!-- Contenido (Se elimina el bloque de Excel para dar espacio exclusivo al WhatsApp) -->
+                <!-- Contenido -->
                 <div class="flex-1 flex flex-col overflow-hidden relative z-10">
                     <div class="flex-1 p-8 flex flex-col overflow-hidden">
                         <h4 class="text-xs font-black uppercase tracking-widest mb-5 flex items-center text-[#25d366] flex-shrink-0">
@@ -296,7 +305,7 @@
                                 
                                 <div class="flex flex-col mr-3 overflow-hidden">
                                     <span class="text-sm font-bold text-white truncate">{{ item['Nombres y Apellidos'] || 'Sin nombre' }}</span>
-                                    <span class="text-[10px] text-white/40 mt-0.5 truncate">{{ item['Tel. con 598'] }}</span>
+                                    <span class="text-[10px] text-white/40 mt-0.5 truncate">{{ formatDisplayPhone(item['Tel. con 598']) }}</span>
                                 </div>
                                 
                                 <!-- Botón dinámico Contactar / Contactado -->
@@ -325,7 +334,7 @@
                 const errorMessage = ref('');
                 const filters = ref({ search: '', zona: '', edadMin: 18, edadMax: 65, turnos: [], estado: '' });
                 const selectedIds = ref(new Set());
-                const contactedIds = ref(new Set()); // Para recordar a quién ya le escribimos
+                const contactedIds = ref(new Set()); 
                 const expandedId = ref(null);
                 const horarioCitacion = ref('08:30 hs');
 
@@ -334,8 +343,8 @@
 
                 const MOCK_DATA = [
                     ["Marca temporal", "Nombres y Apellidos", "C.I", "Fecha de nacimiento", "Zona de residencia", "Tel. con 598", "¿En qué turnos tenés disponibilidad para trabajar? Podes marcar más de una opción", "Estado"],
-                    ["2026-05-15T13:00:00.000Z", "Juan Pérez (Ejemplo)", "1.234.567-8", "1995-05-15T00:00:00.000Z", "Montevideo - Centro", "099123456", "Mañana, Tarde", "Activo"],
-                    ["2026-05-15T13:05:00.000Z", "María Silva (Ejemplo)", "2.345.678-9", "1988-08-20T00:00:00.000Z", "Montevideo - Cerrito", "098765432", "Noche", ""]
+                    ["2026-05-15T13:00:00.000Z", "Juan Pérez (Ejemplo)", "1.234.567-8", "1995-05-15T00:00:00.000Z", "Montevideo - Centro", "59899123456", "Mañana, Tarde", "Activo"],
+                    ["2026-05-15T13:05:00.000Z", "María Silva (Ejemplo)", "2.345.678-9", "1988-08-20T00:00:00.000Z", "Montevideo - Cerrito", "59898765432", "Noche", ""]
                 ];
 
                 const processData = (rawArray) => {
@@ -370,7 +379,6 @@
                                     if (t.getMonth() < b.getMonth() || (t.getMonth() === b.getMonth() && t.getDate() < b.getDate())) age--;
                                     obj.EdadCalculada = isNaN(age) ? (parseInt(obj['Edad']) || 25) : age;
                                 } else {
-                                    // Si viene directo en formato Date (ISO string de Apps Script)
                                     const dISO = new Date(obj['Fecha de nacimiento']);
                                     if(!isNaN(dISO)) {
                                         const t = new Date();
@@ -518,6 +526,7 @@
                     return k !== 'id' && k !== 'EdadCalculada' && v !== '' && !k.includes('DT') && !keyLower.includes('marca temporal');
                 };
 
+                // Helpers de formato para la UI visual
                 const formatValue = (val) => {
                     if (!val) return '';
                     const strVal = String(val);
@@ -533,9 +542,34 @@
                     return strVal;
                 };
 
+                const formatDisplayPhone = (tel) => {
+                    if (!tel) return '-';
+                    let strTel = String(tel).trim();
+                    if (strTel.startsWith('598')) {
+                        return '0' + strTel.slice(3);
+                    }
+                    return strTel;
+                };
+
+                const getStatusColor = (estado) => {
+                    const e = (estado || '').toLowerCase().trim();
+                    if (!e) return 'bg-amber-100 text-amber-700';
+                    if (e.includes('inactivo')) return 'bg-red-100 text-red-700';
+                    if (e.includes('activo')) return 'bg-emerald-100 text-emerald-700';
+                    return 'bg-slate-100 text-slate-700';
+                };
+
+                const getStatusText = (estado) => {
+                    const e = (estado || '').trim();
+                    if (!e) return 'SIN ASIGNAR';
+                    return e;
+                };
+
                 const formatWhatsAppLink = (item) => {
                     let tel = (item['Tel. con 598'] || '').replace(/\D/g, '');
+                    // Mantenemos el código 598 para la API de WhatsApp sin importar cómo lo veamos en pantalla
                     if (tel && !tel.startsWith('598')) tel = '598' + tel;
+                    if (tel && tel.startsWith('0')) tel = '598' + tel.slice(1);
                     const msg = `Convocatoria para trabajar. Tu horario asignado es: ${horarioCitacion.value} Completá el siguiente formulario solo si tenés la seguridad de que vas a presentarte. https://forms.gle/TC6ZKBzLwmWEi9LD8`;
                     return `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
                 };
@@ -544,13 +578,15 @@
                     const sel = getSelectedData();
                     const kTurno = turnoKey.value;
                     const kZona = zonaKey.value;
+                    const kEstado = estadoKey.value;
                     
                     const dataToExport = sel.map(i => ({
                         'Nombre': i['Nombres y Apellidos'] || '',
                         'Cedula': i['C.I'] || '',
-                        'Telefono': i['Tel. con 598'] || '',
+                        'Telefono': formatDisplayPhone(i['Tel. con 598']),
                         'Zona': kZona ? (i[kZona] || '') : '',
-                        'Turnos': kTurno ? (i[kTurno] || '') : ''
+                        'Turnos': kTurno ? (i[kTurno] || '') : '',
+                        'Estado': kEstado ? (i[kEstado] || 'Sin asignar') : 'Sin asignar'
                     }));
 
                     const ws = XLSX.utils.json_to_sheet(dataToExport);
@@ -563,8 +599,8 @@
                     data, loading, usingMock, errorMessage, filters, turnosDisponibles, filteredData, 
                     selectedIds, contactedIds, expandedId, horarioCitacion, isAllSelected, hasActiveFilters, 
                     toggleSelection, toggleSelectAll, clearSelection, toggleExpand, markAsContacted,
-                    getSelectedData, getInitials, resetFilters, shouldShowField, formatValue, 
-                    formatWhatsAppLink, downloadExcel, zonaKey, turnoKey, estadoKey 
+                    getSelectedData, getInitials, resetFilters, shouldShowField, formatValue, formatDisplayPhone,
+                    getStatusColor, getStatusText, formatWhatsAppLink, downloadExcel, zonaKey, turnoKey, estadoKey 
                 };
             }
         }).mount('#app');
