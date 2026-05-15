@@ -121,8 +121,8 @@
                             <div class="relative">
                                 <select v-model="filters.estado" class="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm appearance-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all cursor-pointer font-bold text-slate-600">
                                     <option value="">Todos los Estados</option>
-                                    <option value="activo">Activos (o Vacíos)</option>
-                                    <option value="inactivo">Inactivos (o Vacíos)</option>
+                                    <option value="activo">Activos</option>
+                                    <option value="inactivo">Inactivos</option>
                                 </select>
                                 <i data-lucide="chevron-down" class="absolute right-4 top-3.5 h-4 w-4 text-slate-400 pointer-events-none"></i>
                             </div>
@@ -227,7 +227,7 @@
                                             {{ formatDisplayPhone(item['Tel. con 598']) }}
                                         </td>
                                         <td class="p-4 hidden md:table-cell text-center">
-                                            <span :class="getStatusColor(item[estadoKey])" class="text-[10px] font-black px-3 py-1.5 rounded-xl uppercase tracking-widest">
+                                            <span :class="getStatusColor(item[estadoKey])" class="text-[10px] font-black px-3 py-1.5 rounded-xl uppercase tracking-widest whitespace-nowrap">
                                                 {{ getStatusText(item[estadoKey]) }}
                                             </span>
                                         </td>
@@ -278,7 +278,7 @@
                         <button @click="downloadExcel" class="p-2.5 bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-400 rounded-xl transition-all flex items-center justify-center" title="Descargar Excel (.xlsx)">
                             <i data-lucide="file-spreadsheet" class="h-5 w-5"></i>
                         </button>
-                        <button @click="clearSelection" class="p-2.5 bg-white/5 hover:bg-white/10 rounded-xl transition-all text-white/60 hover:text-white" title="Cerrar panel">
+                        <button @click="clearSelection" class="p-2.5 bg-white/5 hover:bg-white/10 rounded-xl transition-all text-white/60 hover:text-white flex items-center justify-center" title="Cerrar panel">
                             <i data-lucide="x" class="h-5 w-5"></i>
                         </button>
                     </div>
@@ -324,7 +324,7 @@
     </div>
 
     <script>
-        const { createApp, ref, computed, onMounted, nextTick } = Vue;
+        const { createApp, ref, computed, onMounted, nextTick, watch } = Vue;
 
         createApp({
             setup() {
@@ -429,6 +429,16 @@
                     }
                 });
 
+                // Observamos selectedIds para asegurar que los íconos del panel se rendericen al abrirse
+                watch(selectedIds, (newVal, oldVal) => {
+                    if (newVal.size > 0 && oldVal.size === 0) {
+                        // El panel acaba de aparecer, necesitamos inicializar los íconos
+                        nextTick(() => {
+                            if (window.lucide) window.lucide.createIcons();
+                        });
+                    }
+                });
+
                 const normalizeStr = (str) => {
                     if (str === null || str === undefined) return '';
                     return String(str).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -496,7 +506,8 @@
                         let matchEstado = true;
                         const itemEstado = normalizeStr(item[kEstado]);
                         if (filterEstado !== '') {
-                            matchEstado = itemEstado === '' || itemEstado.includes(filterEstado);
+                            // Uso de coincidencia exacta para que "inactivo" no pase por "activo"
+                            matchEstado = itemEstado === '' || itemEstado === filterEstado;
                         }
                         
                         return matchSearch && matchZona && matchEdad && matchTurno && matchEstado;
@@ -506,9 +517,24 @@
                 const isAllSelected = computed(() => filteredData.value.length > 0 && selectedIds.value.size === filteredData.value.length);
                 const hasActiveFilters = computed(() => filters.value.search !== '' || filters.value.zona !== '' || filters.value.edadMin > 18 || filters.value.edadMax < 65 || filters.value.turnos.length > 0 || filters.value.estado !== '');
                 
-                const toggleSelection = (id) => { const s = new Set(selectedIds.value); if (s.has(id)) s.delete(id); else s.add(id); selectedIds.value = s; };
-                const toggleSelectAll = () => { if (isAllSelected.value) selectedIds.value = new Set(); else selectedIds.value = new Set(filteredData.value.map(d => d.id)); };
-                const clearSelection = () => selectedIds.value = new Set();
+                const toggleSelection = (id) => { 
+                    const s = new Set(selectedIds.value); 
+                    if (s.has(id)) s.delete(id); else s.add(id); 
+                    selectedIds.value = s; 
+                    nextTick(() => { if (window.lucide) window.lucide.createIcons(); });
+                };
+                
+                const toggleSelectAll = () => { 
+                    if (isAllSelected.value) selectedIds.value = new Set(); 
+                    else selectedIds.value = new Set(filteredData.value.map(d => d.id)); 
+                    nextTick(() => { if (window.lucide) window.lucide.createIcons(); });
+                };
+                
+                const clearSelection = () => {
+                    selectedIds.value = new Set();
+                    nextTick(() => { if (window.lucide) window.lucide.createIcons(); });
+                };
+
                 const toggleExpand = (id) => { expandedId.value = expandedId.value === id ? null : id; nextTick(() => lucide.createIcons()); };
                 const getSelectedData = () => filteredData.value.filter(d => selectedIds.value.has(d.id));
                 const getInitials = (n) => n ? n.trim().split(' ').map(p => p[0]).join('').substring(0,2).toUpperCase() : '??';
