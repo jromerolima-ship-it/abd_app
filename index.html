@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Postulantes - RRHH</title>
+    <!-- Tailwind CSS para el diseño -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Vue.js 3 para la lógica interactiva -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    
+    <style>
+        [v-cloak] { display: none; }
+        .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
+        .fade-enter-from, .fade-leave-to { opacity: 0; }
+        .slide-down-enter-active { transition: all 0.3s ease-out; }
+        .slide-down-leave-active { transition: all 0.2s ease-in; }
+        .slide-down-enter-from, .slide-down-leave-to { opacity: 0; transform: translateY(-10px); }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans antialiased text-gray-900">
+    <div id="app" v-cloak class="min-h-screen flex flex-col">
+        
+        <!-- PANTALLA DE CARGA -->
+        <div v-if="loading" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-50">
+            <div class="flex flex-col items-center">
+                <div class="h-12 w-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                <span class="text-lg font-medium text-gray-600">Cargando visualizador...</span>
+            </div>
+        </div>
+
+        <!-- HEADER -->
+        <header class="bg-white shadow-sm border-b sticky top-0 z-40">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+                <div class="flex items-center">
+                    <div class="bg-blue-600 p-2 rounded-lg mr-3 shadow-md">
+                        <i data-lucide="users" class="h-6 w-6 text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl sm:text-2xl font-bold text-gray-900">Gestión de Postulantes</h1>
+                        <p class="text-xs text-blue-600 font-bold uppercase tracking-wider">Logística & Operarios</p>
+                    </div>
+                </div>
+                <div class="hidden sm:block text-sm font-bold px-4 py-2 bg-blue-50 text-blue-700 rounded-full border border-blue-100">
+                    Total en base: {{ data.length }}
+                </div>
+            </div>
+        </header>
+
+        <!-- AVISO DE MODO DEMO -->
+        <transition name="fade">
+            <div v-if="usingMock" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full mt-4">
+                <div class="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-lg shadow-sm flex items-center">
+                    <i data-lucide="alert-circle" class="h-5 w-5 text-amber-500 mr-3 flex-shrink-0"></i>
+                    <p class="text-sm text-amber-800 font-medium">
+                        <strong>Modo de prueba:</strong> No se pudo conectar a la planilla de forma directa. Mostrando datos de ejemplo.
+                    </p>
+                </div>
+            </div>
+        </transition>
+
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col lg:flex-row gap-6 flex-1 w-full">
+            
+            <!-- FILTROS -->
+            <aside class="w-full lg:w-72 flex-shrink-0">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 sticky top-24">
+                    <h2 class="text-sm font-bold text-gray-400 uppercase tracking-widest mb-6 flex items-center">
+                        <i data-lucide="filter" class="h-4 w-4 mr-2"></i> Filtros de búsqueda
+                    </h2>
+                    
+                    <div class="space-y-6">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-2">Nombre o Documento</label>
+                            <input type="text" v-model="filters.search" placeholder="Buscar..." 
+                                class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 transition-all outline-none">
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <label class="text-xs font-bold text-gray-700">Edad Máxima</label>
+                                <span class="text-xs font-bold text-blue-600">{{ filters.edadMax }} años</span>
+                            </div>
+                            <input type="range" min="18" max="65" v-model.number="filters.edadMax" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-2">Zona de Residencia</label>
+                            <input type="text" v-model="filters.zona" placeholder="Ej: Montevideo" 
+                                class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-3">Disponibilidad</label>
+                            <div class="space-y-2 max-h-40 overflow-y-auto custom-scrollbar pr-2">
+                                <label v-for="turno in turnosDisponibles" :key="turno" class="flex items-center group cursor-pointer">
+                                    <input type="checkbox" :value="turno" v-model="filters.turnos" class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer">
+                                    <span class="ml-3 text-sm text-gray-600 group-hover:text-gray-900 transition-colors">{{ turno }}</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <button @click="resetFilters" v-if="hasActiveFilters" class="w-full py-2 text-xs font-bold text-red-500 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">
+                            Limpiar filtros
+                        </button>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- CONTENIDO -->
+            <div class="flex-1 flex flex-col space-y-6 min-w-0">
+                
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col h-[600px] overflow-hidden">
+                    <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-white z-10">
+                        <span class="text-sm font-bold text-gray-800">Resultados: {{ filteredData.length }}</span>
+                        <button v-if="filteredData.length > 0" @click="toggleSelectAll" class="text-xs font-bold text-blue-600 px-3 py-1.5 hover:bg-blue-50 rounded-lg transition-colors flex items-center">
+                            <i :data-lucide="isAllSelected ? 'check-square' : 'square'" class="h-4 w-4 mr-2"></i>
+                            {{ isAllSelected ? 'Deseleccionar' : 'Seleccionar todo' }}
+                        </button>
+                    </div>
+
+                    <div class="overflow-auto flex-1 bg-gray-50">
+                        <table class="w-full border-collapse">
+                            <thead class="bg-white sticky top-0 z-20 shadow-sm">
+                                <tr class="text-left border-b border-gray-100">
+                                    <th class="p-4 w-12"></th>
+                                    <th class="p-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Candidato</th>
+                                    <th class="p-4 text-xs font-bold text-gray-400 uppercase tracking-widest hidden sm:table-cell">C.I</th>
+                                    <th class="p-4 text-xs font-bold text-gray-400 uppercase tracking-widest hidden md:table-cell">Edad</th>
+                                    <th class="p-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Teléfono</th>
+                                    <th class="p-4 w-12"></th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-50">
+                                <template v-for="item in filteredData" :key="item.id">
+                                    <tr class="hover:bg-blue-50/30 transition-colors group cursor-pointer" @click.self="toggleSelection(item.id)">
+                                        <td class="p-4 text-center" @click.stop="toggleSelection(item.id)">
+                                            <input type="checkbox" :checked="selectedIds.has(item.id)" class="w-4 h-4 rounded border-gray-300 text-blue-600 cursor-pointer">
+                                        </td>
+                                        <td class="p-4" @click="toggleSelection(item.id)">
+                                            <div class="flex items-center">
+                                                <div class="h-9 w-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xs mr-3">
+                                                    {{ getInitials(item['Nombres y Apellidos']) }}
+                                                </div>
+                                                <div class="font-bold text-gray-900 text-sm">{{ item['Nombres y Apellidos'] }}</div>
+                                            </div>
+                                        </td>
+                                        <td class="p-4 text-sm text-gray-500 hidden sm:table-cell">{{ item['C.I'] }}</td>
+                                        <td class="p-4 hidden md:table-cell">
+                                            <span class="text-xs font-bold bg-gray-100 px-2 py-1 rounded">{{ item.EdadCalculada }} años</span>
+                                        </td>
+                                        <td class="p-4 text-sm text-gray-700 font-medium">{{ item['Tel. con 598'] }}</td>
+                                        <td class="p-4 text-right">
+                                            <button @click.stop="toggleExpand(item.id)" class="text-gray-400 hover:text-blue-600 transition-colors">
+                                                <i :data-lucide="expandedId === item.id ? 'chevron-up' : 'chevron-down'" class="h-5 w-5"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    <tr v-if="expandedId === item.id">
+                                        <td colspan="6" class="bg-gray-50 p-6 border-b border-blue-100">
+                                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                                <div v-for="(val, key) in item" :key="key" v-show="key !== 'id' && key !== 'EdadCalculada' && val" class="flex flex-col">
+                                                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">{{ key }}</span>
+                                                    <span class="text-sm text-gray-800 font-medium leading-tight">{{ val }}</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ACCIONES -->
+                <transition name="slide-down">
+                    <div v-if="selectedIds.size > 0" class="bg-white rounded-2xl shadow-xl border border-blue-100 p-6">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 pb-4 border-b border-gray-100">
+                            <h3 class="text-lg font-bold text-gray-900 flex items-center">
+                                <span class="bg-blue-600 text-white h-7 w-7 rounded-full flex items-center justify-center text-xs mr-3">{{ selectedIds.size }}</span>
+                                Candidatos Seleccionados
+                            </h3>
+                            <button @click="clearSelection" class="text-xs font-bold text-gray-400 hover:text-gray-600">Cancelar selección</button>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div class="bg-gray-50 p-5 rounded-xl border border-gray-100">
+                                <h4 class="text-sm font-bold text-gray-900 mb-3 flex items-center">
+                                    <i data-lucide="download" class="h-4 w-4 mr-2 text-blue-600"></i> Reporte Excel
+                                </h4>
+                                <p class="text-xs text-gray-500 mb-4">Descarga una planilla CSV con los datos de contacto listos para RRHH.</p>
+                                <button @click="downloadCSV" class="w-full bg-gray-900 hover:bg-black text-white py-2.5 rounded-lg font-bold text-sm transition-all shadow-sm">
+                                    Descargar Reporte ({{ selectedIds.size }})
+                                </button>
+                            </div>
+
+                            <div class="bg-green-50 p-5 rounded-xl border border-green-100">
+                                <h4 class="text-sm font-bold text-green-800 mb-3 flex items-center">
+                                    <i data-lucide="message-circle" class="h-4 w-4 mr-2 text-green-600"></i> Citación WhatsApp
+                                </h4>
+                                <input type="text" v-model="horarioCitacion" placeholder="Ej: Mañana 08:30 hs" class="w-full px-3 py-2 border border-green-200 rounded-lg text-sm mb-4 outline-none focus:ring-2 focus:ring-green-400">
+                                <div class="space-y-2 max-h-32 overflow-y-auto custom-scrollbar">
+                                    <a v-for="item in getSelectedData()" :key="item.id" :href="formatWhatsAppLink(item)" target="_blank" class="flex items-center justify-between bg-white p-2 rounded-lg border border-green-100 hover:border-green-400 transition-all">
+                                        <span class="text-xs font-bold text-gray-700 truncate mr-2">{{ item['Nombres y Apellidos'] }}</span>
+                                        <span class="bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded flex items-center">
+                                            CITAR <i data-lucide="external-link" class="h-3 w-3 ml-1"></i>
+                                        </span>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </transition>
+
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted, nextTick } = Vue;
+
+        createApp({
+            setup() {
+                const data = ref([]);
+                const loading = ref(true);
+                const usingMock = ref(false);
+                const filters = ref({ search: '', zona: '', edadMax: 65, turnos: [] });
+                const selectedIds = ref(new Set());
+                const expandedId = ref(null);
+                const horarioCitacion = ref('09:00 hs');
+
+                // Datos de prueba en caso de fallo de conexión
+                const MOCK_CSV = `Marca temporal,Nombres y Apellidos,C.I,Fecha de nacimiento,Zona de residencia,Tel. con 598,¿En qué turnos tenés disponibilidad para trabajar?
+"15/5/2026","Juan Pérez","1.234.567-8","15/05/1995","Montevideo - Centro","099123456","Mañana, Tarde"
+"15/5/2026","María Silva","2.345.678-9","20/08/1988","Montevideo - Cerrito","098765432","Noche"
+"15/5/2026","Carlos Gómez","3.456.789-0","10/01/2001","Canelones - Solymar","091234567","Mañana"
+"15/5/2026","Ana Martínez","4.567.890-1","05/11/1982","Montevideo - Prado","092345678","Tarde"`;
+
+                const parseCSV = (csv) => {
+                    const lines = csv.split(/\r?\n/);
+                    if (lines.length < 2) return [];
+                    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+                    const result = [];
+                    for (let i = 1; i < lines.length; i++) {
+                        if (!lines[i].trim()) continue;
+                        const row = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || lines[i].split(',');
+                        const obj = { id: i };
+                        headers.forEach((h, idx) => {
+                            let val = row[idx] ? row[idx].trim().replace(/^"|"$/g, '') : '';
+                            obj[h] = val;
+                        });
+                        
+                        // Cálculo de edad dinámico
+                        if(obj['Fecha de nacimiento']) {
+                            const p = obj['Fecha de nacimiento'].split(/[-/]/);
+                            if(p.length === 3) {
+                                const b = new Date(p[2].length === 2 ? "20"+p[2] : p[2], p[1]-1, p[0]);
+                                const t = new Date();
+                                let age = t.getFullYear() - b.getFullYear();
+                                if (t.getMonth() < b.getMonth() || (t.getMonth() === b.getMonth() && t.getDate() < b.getDate())) age--;
+                                obj.EdadCalculada = isNaN(age) ? 25 : age;
+                            }
+                        } else { obj.EdadCalculada = 25; }
+                        result.push(obj);
+                    }
+                    return result;
+                };
+
+                onMounted(async () => {
+                    try {
+                        const res = await fetch("https://docs.google.com/spreadsheets/d/1T13S3lZKrmqcxHh4lzh4p7M_AYX1qUVk/export?format=csv&gid=422939458");
+                        const txt = await res.text();
+                        if (txt.includes('<!DOCTYPE html>')) throw new Error();
+                        data.value = parseCSV(txt);
+                    } catch {
+                        usingMock.value = true;
+                        data.value = parseCSV(MOCK_CSV);
+                    } finally {
+                        loading.value = false;
+                        nextTick(() => { if(window.lucide) window.lucide.createIcons(); });
+                    }
+                });
+
+                const turnosDisponibles = computed(() => {
+                    const set = new Set();
+                    data.value.forEach(item => {
+                        const t = item['¿En qué turnos tenés disponibilidad para trabajar?'];
+                        if (t) t.split(',').forEach(s => set.add(s.trim()));
+                    });
+                    return Array.from(set).sort();
+                });
+
+                const filteredData = computed(() => {
+                    return data.value.filter(item => {
+                        const s = filters.value.search.toLowerCase();
+                        const matchSearch = (item['Nombres y Apellidos'] || '').toLowerCase().includes(s) || (item['C.I'] || '').includes(s);
+                        const matchZona = (item['Zona de residencia'] || '').toLowerCase().includes(filters.value.zona.toLowerCase());
+                        const matchEdad = item.EdadCalculada <= filters.value.edadMax;
+                        let matchTurno = true;
+                        if (filters.value.turnos.length > 0) {
+                            matchTurno = filters.value.turnos.some(t => (item['¿En qué turnos tenés disponibilidad para trabajar?'] || '').includes(t));
+                        }
+                        return matchSearch && matchZona && matchEdad && matchTurno;
+                    });
+                });
+
+                const isAllSelected = computed(() => filteredData.value.length > 0 && selectedIds.value.size === filteredData.value.length);
+                const hasActiveFilters = computed(() => filters.value.search !== '' || filters.value.zona !== '' || filters.value.edadMax < 65 || filters.value.turnos.length > 0);
+
+                const toggleSelection = (id) => {
+                    const s = new Set(selectedIds.value);
+                    if (s.has(id)) s.delete(id); else s.add(id);
+                    selectedIds.value = s;
+                };
+
+                const toggleSelectAll = () => {
+                    if (isAllSelected.value) selectedIds.value = new Set();
+                    else selectedIds.value = new Set(filteredData.value.map(d => d.id));
+                };
+
+                const clearSelection = () => selectedIds.value = new Set();
+                const toggleExpand = (id) => { expandedId.value = expandedId.value === id ? null : id; nextTick(() => lucide.createIcons()); };
+                const getSelectedData = () => filteredData.value.filter(d => selectedIds.value.has(d.id));
+                const getInitials = (n) => n ? n.split(' ').map(p => p[0]).join('').substring(0,2).toUpperCase() : '??';
+                const resetFilters = () => filters.value = { search: '', zona: '', edadMax: 65, turnos: [] };
+
+                const formatWhatsAppLink = (item) => {
+                    let tel = (item['Tel. con 598'] || '').replace(/\D/g, '');
+                    if (tel && !tel.startsWith('598')) tel = '598' + tel;
+                    const msg = `Hola ${item['Nombres y Apellidos']}, te citamos por tu postulación. Debes presentarte en el horario de las ${horarioCitacion.value}.`;
+                    return `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
+                };
+
+                const downloadCSV = () => {
+                    const sel = getSelectedData();
+                    const headers = ['Nombre', 'Cedula', 'Telefono', 'Turnos'];
+                    const rows = sel.map(i => [`"${i['Nombres y Apellidos']}"`, `"${i['C.I']}"`, `"${i['Tel. con 598']}"`, `"${i['¿En qué turnos tenés disponibilidad para trabajar?']}"`].join(','));
+                    const content = '\uFEFF' + [headers.join(','), ...rows].join('\n');
+                    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement("a");
+                    link.href = url;
+                    link.download = `Reporte_RRHH.csv`;
+                    link.click();
+                };
+
+                return {
+                    data, loading, usingMock, filters, turnosDisponibles, filteredData,
+                    selectedIds, expandedId, horarioCitacion, isAllSelected, hasActiveFilters,
+                    toggleSelection, toggleSelectAll, clearSelection, toggleExpand,
+                    getSelectedData, getInitials, resetFilters, formatWhatsAppLink, downloadCSV
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
