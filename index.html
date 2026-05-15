@@ -34,8 +34,8 @@
         input[type=number] { -moz-appearance: textfield; }
     </style>
 </head>
-<body class="bg-slate-50 font-sans antialiased text-slate-900">
-    <div id="app" v-cloak class="min-h-screen flex flex-col">
+<body class="bg-slate-50 font-sans antialiased text-slate-900 overflow-x-hidden">
+    <div id="app" v-cloak class="min-h-screen flex flex-col relative">
         
         <!-- PANTALLA DE CARGA -->
         <div v-if="loading" class="fixed inset-0 z-50 flex items-center justify-center bg-white/90 backdrop-blur-md">
@@ -89,7 +89,9 @@
             </div>
         </transition>
 
-        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col lg:flex-row gap-8 flex-1 w-full">
+        <!-- CONTENIDO PRINCIPAL (Se ajusta dinámicamente si el panel está abierto) -->
+        <main class="mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col lg:flex-row gap-8 flex-1 w-full transition-all duration-300 ease-in-out"
+              :class="selectedIds.size > 0 ? 'max-w-[100%] xl:pr-[470px]' : 'max-w-7xl'">
             
             <!-- FILTROS (SIDEBAR) -->
             <aside class="w-full lg:w-80 flex-shrink-0">
@@ -142,7 +144,7 @@
 
                         <div>
                             <label class="block text-[11px] font-black text-slate-500 uppercase mb-3">Zona de Residencia</label>
-                            <input type="text" v-model="filters.zona" placeholder="Ej: Montevideo Centro" 
+                            <input type="text" v-model="filters.zona" placeholder="Ej: Pando Montevideo" 
                                 class="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all">
                         </div>
 
@@ -233,7 +235,6 @@
                                             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
                                                 <div v-for="(val, key) in item" :key="key" v-show="shouldShowField(key, val)" class="flex flex-col">
                                                     <span class="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">{{ key }}</span>
-                                                    <!-- APLICAMOS EL FORMATEADOR DE FECHAS AQUÍ -->
                                                     <span class="text-sm text-slate-900 font-bold leading-relaxed">{{ formatValue(val) }}</span>
                                                 </div>
                                             </div>
@@ -247,65 +248,51 @@
             </div>
         </main>
 
-        <!-- PANEL DE ACCIONES LATERAL (DRAWER) -->
-        <!-- Fondo oscuro -->
-        <transition name="fade">
-            <div v-if="selectedIds.size > 0" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40" @click="clearSelection"></div>
-        </transition>
-
-        <!-- Panel lateral deslizable -->
+        <!-- PANEL DE ACCIONES LATERAL (DRAWER) FLOTANTE -->
         <transition name="slide-left">
-            <div v-if="selectedIds.size > 0" class="fixed inset-y-0 right-0 w-full sm:w-[450px] bg-slate-900 shadow-2xl z-50 flex flex-col text-white">
+            <div v-if="selectedIds.size > 0" class="fixed inset-y-0 right-0 w-full sm:w-[450px] bg-slate-900 shadow-2xl z-50 flex flex-col text-white border-l border-white/10">
                 
                 <div class="absolute -right-16 -top-16 w-64 h-64 bg-blue-600 rounded-full blur-[100px] opacity-20 pointer-events-none"></div>
 
-                <!-- Cabecera del Panel -->
+                <!-- Cabecera del Panel con Botón de Excel integrado -->
                 <div class="px-8 py-6 border-b border-white/10 flex justify-between items-center relative z-10 bg-slate-900/80 backdrop-blur-md">
                     <div class="flex items-center">
                         <div class="h-12 w-12 bg-blue-600 rounded-2xl flex items-center justify-center text-xl font-black mr-4 shadow-xl shadow-blue-500/20">
                             {{ selectedIds.size }}
                         </div>
                         <div>
-                            <h3 class="text-xl font-black tracking-tight">Gestión Masiva</h3>
-                            <p class="text-[10px] text-white/50 font-bold uppercase tracking-widest">Postulantes seleccionados</p>
+                            <h3 class="text-xl font-black tracking-tight">Seleccionados</h3>
+                            <p class="text-[10px] text-white/50 font-bold uppercase tracking-widest">Gestión Masiva</p>
                         </div>
                     </div>
-                    <button @click="clearSelection" class="p-2 bg-white/5 hover:bg-white/10 rounded-xl transition-all text-white/60 hover:text-white">
-                        <i data-lucide="x" class="h-5 w-5"></i>
-                    </button>
-                </div>
-                
-                <!-- Contenido con Scroll -->
-                <div class="flex-1 overflow-y-auto custom-scrollbar-dark p-8 space-y-8 relative z-10">
-                    
-                    <!-- Exportación Excel -->
-                    <div class="bg-white/5 p-6 rounded-3xl border border-white/10 flex flex-col">
-                        <h4 class="text-xs font-black uppercase tracking-widest mb-3 flex items-center">
-                            <i data-lucide="file-down" class="h-4 w-4 mr-2 text-blue-400"></i> Reporte para Sistemas
-                        </h4>
-                        <p class="text-xs text-white/40 mb-6 leading-relaxed">Genera un documento Excel (.xlsx) optimizado con los datos de contacto para importar a planillas de control.</p>
-                        <button @click="downloadExcel" class="bg-blue-600 hover:bg-blue-500 text-white py-3.5 rounded-2xl font-black text-sm transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center">
-                            DESCARGAR EXCEL
+                    <div class="flex gap-2">
+                        <button @click="downloadExcel" class="p-2.5 bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-400 rounded-xl transition-all flex items-center justify-center" title="Descargar Excel (.xlsx)">
+                            <i data-lucide="file-spreadsheet" class="h-5 w-5"></i>
+                        </button>
+                        <button @click="clearSelection" class="p-2.5 bg-white/5 hover:bg-white/10 rounded-xl transition-all text-white/60 hover:text-white" title="Cerrar panel">
+                            <i data-lucide="x" class="h-5 w-5"></i>
                         </button>
                     </div>
-
-                    <!-- WhatsApp Masivo -->
-                    <div class="bg-[#128c7e]/10 p-6 rounded-3xl border border-[#128c7e]/20 flex flex-col">
-                        <h4 class="text-xs font-black uppercase tracking-widest mb-5 flex items-center text-[#25d366]">
+                </div>
+                
+                <!-- Contenido (Se elimina el bloque de Excel para dar espacio exclusivo al WhatsApp) -->
+                <div class="flex-1 flex flex-col overflow-hidden relative z-10">
+                    <div class="flex-1 p-8 flex flex-col overflow-hidden">
+                        <h4 class="text-xs font-black uppercase tracking-widest mb-5 flex items-center text-[#25d366] flex-shrink-0">
                             <i data-lucide="message-square" class="h-4 w-4 mr-2"></i> Citación Directa (WA)
                         </h4>
-                        <div class="mb-5">
+                        <div class="mb-5 flex-shrink-0">
                             <label class="block text-[10px] font-black text-[#25d366] uppercase mb-2 ml-1">Horario de Ingreso</label>
                             <input type="text" v-model="horarioCitacion" placeholder="Ej: Mañana 08:30 hs" 
                                 class="w-full px-4 py-3 bg-slate-900/50 border border-[#25d366]/20 rounded-2xl text-sm focus:ring-2 focus:ring-[#25d366] outline-none text-white transition-all">
                         </div>
                         
-                        <!-- Lista de contactos -->
-                        <div class="space-y-3">
+                        <!-- Lista de contactos con scroll máximo -->
+                        <div class="flex-1 overflow-y-auto custom-scrollbar-dark pr-2 space-y-3">
                             <a v-for="item in getSelectedData()" :key="item.id" :href="formatWhatsAppLink(item)" target="_blank" 
                                 @click="markAsContacted(item.id)"
-                                class="flex items-center justify-between bg-white/5 p-3.5 rounded-2xl border hover:shadow-lg transition-all group no-underline"
-                                :class="contactedIds.has(item.id) ? 'border-orange-500/40 bg-orange-500/10' : 'border-white/5 hover:border-[#25d366]/50'">
+                                class="flex items-center justify-between p-3.5 rounded-2xl border transition-all group no-underline"
+                                :class="contactedIds.has(item.id) ? 'border-orange-500/50 bg-orange-500/10' : 'bg-white/5 border-white/5 hover:border-[#25d366]/50 hover:shadow-lg'">
                                 
                                 <div class="flex flex-col mr-3 overflow-hidden">
                                     <span class="text-sm font-bold text-white truncate">{{ item['Nombres y Apellidos'] || 'Sin nombre' }}</span>
@@ -313,8 +300,8 @@
                                 </div>
                                 
                                 <!-- Botón dinámico Contactar / Contactado -->
-                                <span :class="contactedIds.has(item.id) ? 'bg-orange-500 text-white' : 'bg-[#25d366] text-[#075e54] group-hover:scale-105'" 
-                                      class="text-[10px] font-black px-3 py-2 rounded-xl flex items-center flex-shrink-0 transition-all shadow-sm">
+                                <span :class="contactedIds.has(item.id) ? 'bg-orange-500 text-white shadow-orange-500/20 shadow-lg' : 'bg-[#25d366] text-[#075e54] group-hover:scale-105'" 
+                                      class="text-[10px] font-black px-3 py-2 rounded-xl flex items-center flex-shrink-0 transition-all">
                                     {{ contactedIds.has(item.id) ? 'CONTACTADO' : 'CONTACTAR' }} 
                                     <i :data-lucide="contactedIds.has(item.id) ? 'check' : 'arrow-up-right'" class="h-3 w-3 ml-1.5"></i>
                                 </span>
@@ -336,7 +323,6 @@
                 const loading = ref(true);
                 const usingMock = ref(false);
                 const errorMessage = ref('');
-                // Actualizado con el estado
                 const filters = ref({ search: '', zona: '', edadMin: 18, edadMax: 65, turnos: [], estado: '' });
                 const selectedIds = ref(new Set());
                 const contactedIds = ref(new Set()); // Para recordar a quién ya le escribimos
@@ -435,13 +421,11 @@
                     }
                 });
 
-                // Normalizador para ignorar acentos, mayúsculas y separar eficientemente
                 const normalizeStr = (str) => {
                     if (str === null || str === undefined) return '';
                     return String(str).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
                 };
 
-                // Función inteligente para detectar la columna de "Turnos"
                 const turnoKey = computed(() => {
                     if (data.value.length === 0) return '';
                     const keys = Object.keys(data.value[0]);
@@ -449,14 +433,12 @@
                            keys.find(k => k.toLowerCase().includes('turnos')) || '';
                 });
 
-                // Función inteligente para detectar la columna "Zona de residencia"
                 const zonaKey = computed(() => {
                     if (data.value.length === 0) return 'Zona de residencia';
                     const keys = Object.keys(data.value[0]);
                     return keys.find(k => k.toLowerCase().includes('zona') || k.toLowerCase().includes('residencia')) || 'Zona de residencia';
                 });
 
-                // Función inteligente para detectar la columna "Estado" (activo/inactivo)
                 const estadoKey = computed(() => {
                     if (data.value.length === 0) return 'Estado';
                     const keys = Object.keys(data.value[0]);
@@ -480,39 +462,32 @@
                     const kZona = zonaKey.value;
                     const kEstado = estadoKey.value;
                     
-                    // Limpiamos la búsqueda: quitamos acentos y separamos por espacios, comas o guiones
                     const searchTerms = normalizeStr(filters.value.search).split(/\s+/).filter(t => t);
                     const zonaTerms = normalizeStr(filters.value.zona).split(/[\s,.-]+/).filter(t => t);
                     const filterEstado = filters.value.estado.toLowerCase();
 
                     return data.value.filter(item => {
-                        // MATCH BÚSQUEDA GLOBAL
                         const itemNombre = normalizeStr(item['Nombres y Apellidos']);
                         const itemCI = normalizeStr(item['C.I']);
                         const matchSearch = searchTerms.length === 0 || searchTerms.every(term => 
                             itemNombre.includes(term) || itemCI.includes(term)
                         );
                         
-                        // MATCH ZONA (Multipalabra incluyente OR)
                         const itemZona = normalizeStr(item[kZona]);
                         const matchZona = zonaTerms.length === 0 || zonaTerms.some(term => itemZona.includes(term));
                         
-                        // MATCH EDAD
                         const edad = item.EdadCalculada;
                         const matchEdad = edad >= filters.value.edadMin && edad <= filters.value.edadMax;
                         
-                        // MATCH TURNO
                         let matchTurno = true;
                         if (filters.value.turnos.length > 0 && kTurno) {
                             const itemTurno = item[kTurno] || '';
                             matchTurno = filters.value.turnos.some(t => itemTurno.includes(t));
                         }
 
-                        // MATCH ESTADO (Siempre pasa si la celda está vacía en la base)
                         let matchEstado = true;
                         const itemEstado = normalizeStr(item[kEstado]);
                         if (filterEstado !== '') {
-                            // Si el usuario filtró por algo, verificamos si está vacío o si coincide
                             matchEstado = itemEstado === '' || itemEstado.includes(filterEstado);
                         }
                         
@@ -531,7 +506,6 @@
                 const getInitials = (n) => n ? n.trim().split(' ').map(p => p[0]).join('').substring(0,2).toUpperCase() : '??';
                 const resetFilters = () => filters.value = { search: '', zona: '', edadMin: 18, edadMax: 65, turnos: [], estado: '' };
                 
-                // Función para marcar como contactado
                 const markAsContacted = (id) => {
                     const s = new Set(contactedIds.value);
                     s.add(id);
@@ -539,17 +513,14 @@
                     nextTick(() => lucide.createIcons());
                 };
 
-                // Ocultar marca temporal y datos de sistema
                 const shouldShowField = (k, v) => {
                     const keyLower = k.toLowerCase();
                     return k !== 'id' && k !== 'EdadCalculada' && v !== '' && !k.includes('DT') && !keyLower.includes('marca temporal');
                 };
 
-                // Formateador de Fechas Inteligente (ISO -> DD/MM/AAAA)
                 const formatValue = (val) => {
                     if (!val) return '';
                     const strVal = String(val);
-                    // Detecta si es un formato ISO de Google (ej: 2026-05-15T13:00:00.000Z)
                     if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(strVal)) {
                         const d = new Date(strVal);
                         if (!isNaN(d)) {
@@ -562,7 +533,6 @@
                     return strVal;
                 };
 
-                // Enlace de WhatsApp con Formulario incrustado
                 const formatWhatsAppLink = (item) => {
                     let tel = (item['Tel. con 598'] || '').replace(/\D/g, '');
                     if (tel && !tel.startsWith('598')) tel = '598' + tel;
@@ -570,13 +540,11 @@
                     return `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
                 };
                 
-                // Función para exportar a Excel usando SheetJS
                 const downloadExcel = () => {
                     const sel = getSelectedData();
                     const kTurno = turnoKey.value;
                     const kZona = zonaKey.value;
                     
-                    // Preparamos los datos en un formato limpio para el Excel
                     const dataToExport = sel.map(i => ({
                         'Nombre': i['Nombres y Apellidos'] || '',
                         'Cedula': i['C.I'] || '',
@@ -585,14 +553,9 @@
                         'Turnos': kTurno ? (i[kTurno] || '') : ''
                     }));
 
-                    // Creamos la hoja de cálculo (Worksheet)
                     const ws = XLSX.utils.json_to_sheet(dataToExport);
-                    
-                    // Creamos el libro de trabajo (Workbook)
                     const wb = XLSX.utils.book_new();
                     XLSX.utils.book_append_sheet(wb, ws, "Candidatos");
-
-                    // Generamos y descargamos el archivo .xlsx
                     XLSX.writeFile(wb, "Reporte_Seleccion_ABD.xlsx");
                 };
 
